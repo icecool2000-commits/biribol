@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in ['icecool2000@gmail.com']
+        && request.auth.token.email_verified == true;
+    }
+    // ranking e histórico leem todas as presenças
+    match /{path=**}/presencas/{p} {
+      allow read: if true;
+    }
+    match /treinos/{dia} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /presencas/{p} {
+        // qualquer pessoa adiciona o próprio nome (uma vez por treino)
+        allow create: if request.auth != null
+          && dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.keys().hasOnly(['nome', 'em', 'uid'])
+          && request.resource.data.nome is string
+          && request.resource.data.nome.size() >= 2
+          && request.resource.data.nome.size() <= 40
+          && request.resource.data.uid == request.auth.uid
+          && (request.resource.data.em == request.time || isAdmin());
+        // cada um tira só o próprio nome; o organizador tira qualquer um
+        allow delete: if isAdmin()
+          || (request.auth != null && resource.data.uid == request.auth.uid);
+        allow update: if isAdmin();
+      }
+    }
+    match /config/{d} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
