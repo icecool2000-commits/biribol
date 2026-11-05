@@ -88,13 +88,22 @@ li button{padding:5px 10px;font-size:13px}
 .chips button{background:var(--surface);color:var(--fg);border:1px solid var(--line);padding:7px 12px;font-size:14px}
 .chips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th,td{padding:9px 10px;text-align:left;border-top:1px solid var(--line)}
-thead th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
-td.num,th.num{text-align:right}
-td.pos{font-family:var(--display);font-weight:400;color:var(--accent);width:2.2em;text-align:right}
-tr.top td.pos span{display:inline-grid;place-items:center;width:1.7em;height:1.7em;border-radius:50%;background:var(--accent);color:#fff}
-.bar{height:4px;border-radius:2px;background:var(--soft);margin-top:4px;overflow:hidden}
+#rk-table{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums}
+#rk-table th,#rk-table td{padding:10px 4px;border-top:1px solid var(--line);vertical-align:middle;text-align:center}
+#rk-table thead th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;white-space:nowrap}
+#rk-table .c-pos{width:44px}
+#rk-table .c-num{width:38px}
+#rk-table .c-tot{width:50px}
+#rk-table .c-pct{width:50px}
+#rk-table th.nome-col,#rk-table td.nome-col{text-align:left;padding-left:8px;min-width:0}
+#rk-table td.nome-col .nome{display:block;overflow-wrap:break-word;line-height:1.25}
+#rk-table td.pos span{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font-family:var(--display);font-size:16px;color:var(--accent)}
+#rk-table tr.podio td.pos span{background:var(--accent);color:#fff}
+#rk-table td.tot{font-weight:700;font-size:17px}
+#rk-table td.pct{color:var(--muted);font-size:14px}
+#rk-table td.dia{color:var(--muted)}
+#rk-table td.empty-cell{text-align:center;color:var(--muted);padding:22px 12px}
+.bar{height:4px;border-radius:2px;background:var(--soft);margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent)}
 .stat{font-size:14px;color:var(--muted);margin:0}
 .install{background:var(--soft);border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
@@ -431,24 +440,33 @@ document.querySelectorAll("#chips-dia button").forEach(b=>b.onclick=()=>{
 });
 function renderRanking(){
   const {nT,arr}=calcRanking(), tb=$("rk-table"); tb.textContent="";
-  const rot = rkDia==="geral" ? "treinos" : "treinos de "+DIAS[rkDia].toLowerCase();
+  const pl = nT===1 ? "treino" : "treinos"; const rot = rkDia==="geral" ? pl : pl+" de "+DIAS[rkDia].toLowerCase();
   $("rk-stat").textContent = nT ? nT+" "+rot+" · "+arr.length+(arr.length===1?" atleta":" atletas") : "";
   $("wa-rk").href = wa(textoRanking());
-  if (!arr.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="empty"; td.style.display="table-cell"; td.textContent= carregou ? "Ainda não há presenças para este filtro." : "Carregando…"; tr.append(td); tb.append(tr); return; }
+  if (!arr.length){ const tr=document.createElement("tr"), td=document.createElement("td"); td.className="empty-cell"; td.textContent= carregou ? "Ainda não há presenças para este filtro." : "Carregando…"; tr.append(td); tb.append(tr); return; }
   const geral=rkDia==="geral";
-  const head=["#","Atleta"].concat(geral?["Ter","Qui","Dom"]:[]).concat(["Total","%"]);
+  // colunas: [classe da <col>, título, classe da célula]
+  const cols=[["c-pos","#","pos"],["c-nome","Atleta","nome-col"]];
+  if (geral) cols.push(["c-num","Ter","dia"],["c-num","Qui","dia"],["c-num","Dom","dia"]);
+  cols.push(["c-tot","Total","tot"],["c-pct","%","pct"]);
+  const cg=document.createElement("colgroup");
+  cols.forEach(([c])=>{ const col=document.createElement("col"); col.className=c; cg.append(col); });
+  tb.append(cg);
   const thead=document.createElement("thead"), hr=document.createElement("tr");
-  head.forEach((h,i)=>{ const th=document.createElement("th"); th.textContent=h; if(i!==1) th.className="num"; hr.append(th); });
+  cols.forEach(([,t,cls])=>{ const th=document.createElement("th"); th.scope="col"; th.textContent=t; if(cls==="nome-col") th.className="nome-col"; hr.append(th); });
   thead.append(hr); tb.append(thead);
   const tbody=document.createElement("tbody"), max=arr[0].total;
   arr.forEach(p=>{
-    const tr=document.createElement("tr"); if(p.pos<=3) tr.className="top";
-    const tdp=document.createElement("td"); tdp.className="pos"; const s=document.createElement("span"); s.textContent=p.pos; tdp.append(s); tr.append(tdp);
-    const tdn=document.createElement("td"); const nm=document.createElement("span"); nm.className="nome"; nm.textContent=p.nome;
-    const bar=document.createElement("div"); bar.className="bar"; const i=document.createElement("i"); i.style.width=(p.total/max*100)+"%"; bar.append(i);
-    tdn.append(nm,bar); tr.append(tdn);
-    const cols=(geral?[p.d[2],p.d[4],p.d[0]]:[]).concat([p.total,Math.round(p.total/nT*100)+"%"]);
-    cols.forEach((c,j)=>{ const td=document.createElement("td"); td.className="num"; td.textContent=c; if(j===cols.length-2) td.style.fontWeight="700"; tr.append(td); });
+    const tr=document.createElement("tr"); if(p.pos<=3) tr.className="podio";
+    const vals=[p.pos,p.nome].concat(geral?[p.d[2],p.d[4],p.d[0]]:[]).concat([p.total,Math.round(p.total/nT*100)+"%"]);
+    vals.forEach((v,i)=>{
+      const td=document.createElement("td"); td.className=cols[i][2];
+      if (i===0){ const s=document.createElement("span"); s.textContent=v; td.append(s); }
+      else if (i===1){ const nm=document.createElement("span"); nm.className="nome"; nm.textContent=v; nm.title=v;
+        const bar=document.createElement("div"); bar.className="bar"; const b=document.createElement("i"); b.style.width=(p.total/max*100)+"%"; bar.append(b); td.append(nm,bar); }
+      else td.textContent=v;
+      tr.append(td);
+    });
     tbody.append(tr);
   });
   tb.append(tbody);
@@ -457,7 +475,7 @@ function textoRanking(){
   const {nT,arr}=calcRanking();
   const tit = rkDia==="geral" ? "GERAL" : DIAS[rkDia].toUpperCase();
   const per = $("sel-periodo").selectedOptions[0] ? $("sel-periodo").selectedOptions[0].textContent : "Todo o período";
-  const L=["🏐 *BIRIBOL OFICIAL MOCOCA* 🏐","🏆 *RANKING DE PRESENÇA – "+tit+"*","🗓️ "+per+" · "+nT+" treinos",""];
+  const L=["🏐 *BIRIBOL OFICIAL MOCOCA* 🏐","🏆 *RANKING DE PRESENÇA – "+tit+"*","🗓️ "+per+" · "+nT+(nT===1?" treino":" treinos"),""];
   const med={1:"🥇",2:"🥈",3:"🥉"};
   arr.forEach(p=>L.push((med[p.pos]||p.pos+".")+" "+p.nome+" – "+p.total+(p.total===1?" presença":" presenças")));
   if (!arr.length) L.push("Sem presenças registradas.");
