@@ -513,6 +513,7 @@ onAuthStateChanged(auth, async u=>{
   if (!u.isAnonymous && !isAdmin){ toast("Essa conta não é de organizador."); await signOut(auth); return; }
   $("admin-pill").hidden=!isAdmin; $("btn-admin").hidden=isAdmin; $("btn-logout").hidden=!isAdmin;
   renderAll();
+  if (isAdmin) setTimeout(importarListaAntiga, 3000);
 });
 
 /* ---------- dados em tempo real ---------- */
@@ -537,6 +538,16 @@ window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); deferred
 $("btn-install").onclick = async ()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").hidden=true; };
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 
+// Traz uma única vez a lista de 05/11/2026 (feita antes do app), quando o organizador entra
+const LISTA_ANTIGA = [["Flávio","2026-11-05T10:16:36-03:00"],["Leandro","2026-11-05T10:16:41-03:00"],["Clayton","2026-11-05T10:16:47-03:00"],["Marco","2026-11-05T10:16:51-03:00"],["Raul","2026-11-05T10:16:56-03:00"],["Fábio","2026-11-05T10:39:39-03:00"],["Rafael","2026-11-05T12:23:27-03:00"]];
+async function importarListaAntiga(){
+  if (!isAdmin || !carregou) return;
+  const ja = lista("2026-11-05").map(p=>key(p.nome));
+  const falta = LISTA_ANTIGA.filter(([n])=>!ja.includes(key(n)));
+  if (!falta.length) return;
+  try{ for (const [nome, t] of falta) await setDoc(doc(db,"treinos","2026-11-05","presencas",key(nome)), { nome, em: Timestamp.fromDate(new Date(t)), uid: user.uid }); toast("Lista de 05/11 importada."); }
+  catch(e){ console.error(e); }
+}
 // importação de nomes antigos (só funciona para o organizador)
 window.__importar = async (dia, itens) => {
   if (!isAdmin) return "entre como organizador";
