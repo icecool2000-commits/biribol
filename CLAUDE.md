@@ -22,3 +22,4 @@
 - Mata-mata sempre com disputa de 3º lugar (jogo com `perd:[semi1, semi2]`, recebe os perdedores das semifinais via `propagar`). Pódio = final + 3º lugar (`C.podioMata`).
 - Séries Ouro/Prata/Bronze (`formatoSeries` no ctx) só ficam ligadas no app da Liga (lmb).
 - O app do time (`mococa-lmb`) usa uma CÓPIA de `torneio-core.js` para importar etapas da Liga: mudou o core, copie para lá também.
+- Classificação geral (aba Torneio) e classificação final de cada etapa (aba Chaves), também nos relatórios: `C.colocacaoEtapa` e `C.classificacaoGeral`. Critério padrão: vitórias, empates, saldo, pontos feitos. Posição na etapa: campeã, vice, 3º, 4º, eliminados de cada rodada (por campanha), séries em ordem Ouro → Prata → Bronze, depois quem parou nos grupos. Pontuação por ranking da Liga: passar `pontuacao: [pts do 1º, 2º, ...]` no ctx de montarTorneio (ainda não definida).
