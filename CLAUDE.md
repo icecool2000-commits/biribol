@@ -21,5 +21,5 @@
 - Exportações (`exportar.js`): tabela de jogos (fases futuras em branco) e relatório completo em PDF e Excel; cores e logo em `marca` (index.html, montarTorneio). Mesmo módulo do app da LMB (repositório lmb).
 - Mata-mata sempre com disputa de 3º lugar (jogo com `perd:[semi1, semi2]`, recebe os perdedores das semifinais via `propagar`). Pódio = final + 3º lugar (`C.podioMata`).
 - Séries Ouro/Prata/Bronze (`formatoSeries` no ctx) só ficam ligadas no app da Liga (lmb).
-- O app do time (`mococa-lmb`) usa uma CÓPIA de `torneio-core.js` para importar etapas da Liga: mudou o core, copie para lá também.
+- O app do time (`mococa-lmb`) tem CÓPIAS de torneio.js, torneio-core.js, torneio-demo.js, exportar.js (em js/) e torneio.css (em css/), na aba Torneios: mudou aqui, copie para lá também. `ctx.equipeCasa` (opcional) cria a equipe da casa com o elenco.
 - Classificação geral (aba Torneio) e classificação final de cada etapa (aba Chaves), também nos relatórios: `C.colocacaoEtapa` e `C.classificacaoGeral`. Critério padrão: vitórias, empates, saldo, pontos feitos. Posição na etapa: campeã, vice, 3º, 4º, eliminados de cada rodada (por campanha), séries em ordem Ouro → Prata → Bronze, depois quem parou nos grupos. Pontuação por ranking da Liga: passar `pontuacao: [pts do 1º, 2º, ...]` no ctx de montarTorneio (ainda não definida).
