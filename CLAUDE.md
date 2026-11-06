@@ -16,3 +16,4 @@
 - Biribol: melhor de 3 sets (21, 21, tiebreak 15, sempre 2 de vantagem). Basquete: 4 quartos de 10 min, empate só na classificação; no mata-mata prorrogação e bola de ouro.
 - Desempate na classificação: vitórias, empates (basquete), saldo de pontos, pontos feitos.
 - Editores: o organizador cria usuário/senha na tela "Editores" (`acesso.js`, e-mail interno @editores.mococa-esportes.app); papel guardado em `editores/{uid}`. Editor só mexe em torneios; treinos continuam só com o organizador.
+- Demonstração: `torneio-demo.js` gera um torneio fictício completo (botão "Gerar torneio de demonstração", só organizador/editor; marcado com demo:true e "[DEMO]" no nome). Biribol: menor placar de set 5, tiebreak até 30. Basquete: maior 100, menor 20, com prorrogação e bola de ouro.

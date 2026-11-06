@@ -1,6 +1,7 @@
 // Modo Torneio: cadastro, equipes, etapas, chaveamento, súmula e estatísticas.
 // Compartilhado pelos apps do Biribol e do Basquete (o esporte vem em ctx.esporte).
 import * as C from "./torneio-core.js";
+import { gerarDemo } from "./torneio-demo.js";
 
 export function montarTorneio(ctx) {
   const { db, fs, esporte, col, maxAtletas, toast } = ctx;
@@ -72,11 +73,12 @@ export function montarTorneio(ctx) {
     root.textContent = "";
     root.append(barraTopo());
     if (formNovo) { root.append(telaNovo()); return; }
+    if (!T && confirmar) root.append(caixaConfirmar());
     if (!T) {
       root.append(h("div", { class: "t-card t-vazio" },
         h("h3", { text: "Nenhum torneio ainda" }),
         h("p", { class: "cap", text: podeEditar() ? "Crie o primeiro torneio: nome, equipes e etapas." : "Quando o organizador criar um torneio, ele aparece aqui." }),
-        podeEditar() && h("button", { type: "button", onclick: () => { formNovo = true; render(); } }, "Criar torneio")));
+        podeEditar() && h("div", { class: "t-linha" }, h("button", { type: "button", onclick: () => { formNovo = true; render(); } }, "Criar torneio"), botaoDemo())));
       return;
     }
     const abas = [["geral", "Torneio"], ["equipes", "Equipes"], ["chaves", "Chaves e jogos"], ["stats", "Estatísticas"]];
@@ -156,6 +158,19 @@ export function montarTorneio(ctx) {
     return t + ".";
   }
 
+  function botaoDemo() {
+    return h("button", { type: "button", class: "ghost", onclick: () => perguntar("Criar um torneio de demonstração com equipes e atletas fictícios e todos os jogos já jogados? Depois você pode apagá-lo em Editar → Apagar torneio.", criarDemo, "Gerar demonstração") }, "Gerar torneio de demonstração");
+  }
+  async function criarDemo() {
+    const { torneio, jogos: js } = gerarDemo(esporte);
+    const id = "demo-" + Date.now().toString(36);
+    const b = writeBatch(db);
+    b.set(doc(db, col, id), torneio);
+    js.forEach(({ id: jid, ...d }) => b.set(doc(db, col, id, "jogos", jid), d));
+    try { await b.commit(); tid = id; ls.set("tid", id); aba = "chaves"; ls.set("aba", aba); etapaSel = 0; toast("Torneio de demonstração criado."); }
+    catch (e) { console.error(e); toast("Não deu para criar a demonstração. Entre como organizador ou editor."); }
+  }
+
   /* ---------- aba Torneio (geral) ---------- */
   function telaGeral() {
     const w = h("div", { class: "t-col" });
@@ -182,6 +197,7 @@ export function montarTorneio(ctx) {
     w.append(h("div", { class: "t-card" },
       h("div", { class: "t-linha t-entre" }, h("h3", { class: "t-titulo", text: T.nome }), podeEditar() && h("button", { type: "button", class: "ghost", onclick: () => { editandoGeral = true; render(); } }, "Editar")),
       h("p", { class: "cap", text: T.equipes.length + " equipes · " + T.etapas.length + (T.etapas.length === 1 ? " etapa" : " etapas") + " · " + (BIR ? "melhor de 3 sets (21, 21, 15)" : "4 quartos de 10 min") })));
+    const demoBtn = podeEditar() && !T.demo && !torneios.some(t => t.demo) ? botaoDemo() : null;
     T.etapas.forEach((et, i) => {
       const js = jogosEtapa(i), fin = js.filter(j => j.status === "encerrado" && !j.wo).length;
       const final = js.find(j => j.fase === "mata" && j.faseNome === "Final" && j.status === "encerrado");
@@ -192,6 +208,8 @@ export function montarTorneio(ctx) {
         js.length ? h("span", { class: "cap", text: fin + " de " + js.filter(j => !j.wo).length + " jogos encerrados" }) : null,
         camp && h("span", { class: "t-campeao", text: "🏆 Campeã: " + eqNome(camp) })));
     });
+    if (T.demo) w.append(h("p", { class: "cap", text: "Este é um torneio de demonstração, com equipes e atletas fictícios. Para apagar: Editar → Apagar torneio." }));
+    if (demoBtn) w.append(demoBtn);
     return w;
   }
 
