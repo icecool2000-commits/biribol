@@ -163,7 +163,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
       </div>
     </form>
 
-    <p class="note" id="past-note" hidden>Este treino já passou. Só o organizador pode alterar a lista.</p>
+    <p class="note" id="past-note" hidden></p>
 
     <div class="count"><h2>Confirmados</h2><span id="total">0 nomes</span></div>
     <ol class="list" id="list"><li class="empty">Carregando a lista…</li></ol>
@@ -244,14 +244,20 @@ let meuNome = store.get("biribol-nome") || "";
 
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("on"),3000); }
 
+// Horas que a lista fica aberta antes do treino (abre quando o treino anterior começa)
+const ABRE = {2:57, 4:48, 0:63};
+// início do treino no horário de Brasília
+const inicio = dia => new Date(dia+"T"+HORA(parse(dia).getDay())+":00-03:00");
+const abertura = dia => new Date(inicio(dia).getTime() - ABRE[parse(dia).getDay()]*3600000);
+const aberto = dia => { const n=Date.now(); return n < inicio(dia).getTime() && n >= abertura(dia).getTime(); };
+const fmtQuando = dt => DIAS[dt.getDay()].toLowerCase()+", "+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+" às "+pad(dt.getHours())+":"+pad(dt.getMinutes());
 function proximoTreino(){
-  const now = new Date(); const d = new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  if (isTreino(d)){ const h = d.getDay()===0 ? 13 : 22; if (now.getHours() < h) return iso(d); }
-  do { d.setDate(d.getDate()+1); } while(!isTreino(d));
+  const d = new Date(); d.setHours(0,0,0,0);
+  for (let i=0;i<15;i++){ if (isTreino(d) && inicio(iso(d)).getTime() > Date.now()) return iso(d); d.setDate(d.getDate()+1); }
   return iso(d);
 }
 const hoje = () => iso(new Date());
-const passou = dia => dia < hoje();
+const passou = dia => !aberto(dia);
 
 function lista(dia){ return todas.filter(p=>p.dia===dia).sort((a,b)=>a.em-b.em); }
 function diasComLista(){ return [...new Set(todas.map(p=>p.dia))]; }
@@ -270,7 +276,7 @@ function renderSelect(){
   sel.textContent="";
   datas.forEach(id=>{
     const d=parse(id), n=lista(id).length, o=document.createElement("option");
-    o.value=id; o.textContent=DIAS[d.getDay()]+", "+br(id)+(id===prox?" · próximo":"")+(n?" · "+n+(n===1?" nome":" nomes"):"");
+    o.value=id; o.textContent=DIAS[d.getDay()]+", "+br(id)+(id===prox?" · aberto":(inicio(id).getTime()<=Date.now()?" · fechado":""))+(n?" · "+n+(n===1?" nome":" nomes"):"");
     sel.append(o);
   });
   sel.value=atual;
@@ -307,7 +313,13 @@ function renderTreino(){
   const old = passou(atual);
   const mine = (user && meuNome) ? rows.find(p=>p.uid===user.uid && key(p.nome)===key(meuNome)) : null;
   const jaPorNome = minhaPresencaPorNome();
-  $("past-note").hidden = !(old && !isAdmin);
+  $("past-note").hidden = !old;
+  if (old){
+    const futuro = Date.now() < abertura(atual).getTime();
+    $("past-note").textContent = futuro
+      ? "🔒 A lista deste treino abre "+fmtQuando(abertura(atual))+"."
+      : "🔒 Lista fechada: as confirmações encerraram às "+HORA(parse(atual).getDay())+", no horário do treino."+(isAdmin?" Como organizador, você ainda pode corrigir.":"");
+  }
   $("box-confirm").hidden = !carregou || old || !!mine || !!jaPorNome;
   $("box-done").hidden = !(mine || jaPorNome) || old;
   if (mine || jaPorNome){
@@ -574,6 +586,8 @@ window.__importar = async (dia, itens) => {
   for (const [nome, ms] of itens) await setDoc(doc(db,"treinos",dia,"presencas",key(nome)), { nome, em: Timestamp.fromMillis(ms), uid: user.uid });
   return "ok " + itens.length;
 };
+setInterval(()=>{ const p=proximoTreino(); if (p!==renderSelect.ultimo){ if (atual===renderSelect.ultimo || !atual) atual=p; renderSelect.ultimo=p; renderAll(); } else renderTreino(); }, 30000);
+renderSelect.ultimo = proximoTreino();
 renderAll();
 </script>
 </body>

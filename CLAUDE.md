@@ -9,3 +9,4 @@
 - A cada mudança de arquivo, subir a versão do cache em `sw.js` (const C) para todos receberem a atualização.
 - Não usar mensagens automáticas no WhatsApp (não há API gratuita para grupos); o app usa link wa.me para compartilhar.
 - Não reduzir as regras de segurança: qualquer um cria o próprio nome, só o dono tira o próprio, só o organizador edita tudo.
+- Trava de horário: a lista de cada treino abre quando o treino anterior começa e fecha no horário do treino (no app em `ABRE`/`inicio`, e no servidor em `firestore.rules`). O organizador pode corrigir listas fechadas.
