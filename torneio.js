@@ -596,6 +596,61 @@ export function montarTorneio(ctx) {
     const sa = C.statsAtletas(js);
     const todosAtl = T.equipes.flatMap(e => (e.atletas || []).map(a => ({ ...a, eid: e.id, enome: e.nome, ...(sa[a.id] || { p: 0, b: 0, as: 0, jogos: 0 }) })));
     const jogaram = new Set(js.flatMap(j => [j.a, j.b]));
+    // ===== estatísticas gerais =====
+    if (js.length) {
+      const fmt1 = v => (Math.round(v * 10) / 10).toFixed(1).replace(".", ",");
+      let totPts = 0, maiorEq = { v: -1 }, maiorVit = { v: -1 }, maiorInd = { v: -1 }, extras = 0, decididos = 0;
+      js.forEach(j => {
+        const r = res(j); totPts += r.pa + r.pb;
+        [[j.a, r.pa], [j.b, r.pb]].forEach(([e, v]) => { if (v > maiorEq.v) maiorEq = { v, e, j }; });
+        const dif = Math.abs(r.pa - r.pb); if (!r.empate && dif > maiorVit.v) maiorVit = { v: dif, j, r };
+        Object.entries(j.stats || {}).forEach(([aid, st]) => { if ((st.p || 0) > maiorInd.v) maiorInd = { v: st.p || 0, aid, j }; });
+        if (BIR) { if ((j.sets || []).length >= 3) extras++; }
+        else if ((j.periodos || []).some(p => /^P|BO/.test(p.n))) extras++;
+        if (!r.empate) decididos++;
+      });
+      const totB = Object.values(sa).reduce((t, x) => t + x.b, 0), totA = Object.values(sa).reduce((t, x) => t + x.as, 0);
+      const descJ = j => eqNome(j.a) + " x " + eqNome(j.b);
+      const ind = maiorInd.aid ? atletaDe(maiorInd.aid) : null;
+      const tiles = [
+        ["Jogos", js.length, "encerrados no filtro"],
+        ["Pontos", totPts, "somando as duas equipes"],
+        ["Média por jogo", fmt1(totPts / js.length), "pontos (as duas equipes)"],
+        ["Média por equipe", fmt1(totPts / js.length / 2), "pontos por jogo"],
+        ["Maior pontuação", maiorEq.v, maiorEq.e ? eqNome(maiorEq.e) + " · " + descJ(maiorEq.j) : "—"],
+        ["Maior vitória", maiorVit.v >= 0 ? "+" + maiorVit.v : "—", maiorVit.j ? eqNome(maiorVit.r.venc) + " · " + maiorVit.r.pa + " x " + maiorVit.r.pb : "—"],
+        [BIR ? "Maior pontuador num jogo" : "Cestinha de um jogo", maiorInd.v > 0 ? maiorInd.v : "—", ind ? ind.nome + " (" + ind.enome + ")" : "—"],
+        [BIR ? "Jogos no tiebreak" : "Jogos com prorrogação", extras, Math.round(extras / js.length * 100) + "% dos jogos"],
+        [BIR ? "Bloqueios" : "Tocos", totB, "média " + fmt1(totB / js.length) + " por jogo"],
+        ["Assistências", totA, "média " + fmt1(totA / js.length) + " por jogo"]];
+      if (!BIR) tiles.push(["Empates", js.length - decididos, "na fase de classificação"]);
+      w.append(h("div", { class: "card" }, h("h3", { text: "Estatísticas gerais" }), h("p", { class: "cap", text: "Números do filtro escolhido acima" }),
+        h("div", { class: "tiles" }, tiles.map(([a, b, c]) => h("div", { class: "tile" }, h("span", { text: a }), h("b", { text: b }), h("small", { text: c }))))));
+      // média de pontos por fase
+      const porFase = {};
+      js.forEach(j => { const f = faseDe(j), r = res(j); const x = porFase[f] || (porFase[f] = { n: 0, p: 0 }); x.n++; x.p += r.pa + r.pb; });
+      const fasesOrd = Object.keys(porFase).sort((a, b) => ordemF.indexOf(a) - ordemF.indexOf(b));
+      if (fasesOrd.length > 1) {
+        const mf = Math.max(...fasesOrd.map(f => porFase[f].p / porFase[f].n));
+        w.append(h("div", { class: "card" }, h("h3", { text: "Média de pontos por jogo, por fase" }), h("p", { class: "cap", text: "Soma das duas equipes" }),
+          barrasH(fasesOrd.map(f => ({ nome: f, v: Number(fmt1(porFase[f].p / porFase[f].n).replace(",", ".")), fmt: fmt1(porFase[f].p / porFase[f].n), extra: porFase[f].n + (porFase[f].n === 1 ? " jogo" : " jogos"), hi: porFase[f].p / porFase[f].n === mf })), "", false, true, true)));
+      }
+      // média de pontos de cada equipe (feitos e sofridos por jogo)
+      const eqm = {};
+      js.forEach(j => { const r = res(j); [[j.a, r.pa, r.pb], [j.b, r.pb, r.pa]].forEach(([e, pf, pc]) => { const x = eqm[e] || (eqm[e] = { n: 0, pf: 0, pc: 0 }); x.n++; x.pf += pf; x.pc += pc; }); });
+      const eqOrd = Object.keys(eqm).sort((a, b) => eqm[b].pf / eqm[b].n - eqm[a].pf / eqm[a].n);
+      w.append(h("div", { class: "card" }, h("h3", { text: "Média de pontos de cada equipe" }), h("p", { class: "cap", text: "Pontos feitos por jogo · ao lado, quantos sofre por jogo" }),
+        barrasH(eqOrd.map((e, i) => ({ nome: eqNome(e), v: eqm[e].pf / eqm[e].n, fmt: fmt1(eqm[e].pf / eqm[e].n), extra: "sofre " + fmt1(eqm[e].pc / eqm[e].n) + " · " + eqm[e].n + (eqm[e].n === 1 ? " jogo" : " jogos"), hi: i === 0 })), "Sem dados ainda.", false, true)));
+      // média de pontos de cada atleta (pontos ÷ jogos da equipe)
+      const jogosEq = {}; js.forEach(j => { jogosEq[j.a] = (jogosEq[j.a] || 0) + 1; jogosEq[j.b] = (jogosEq[j.b] || 0) + 1; });
+      const medAt = todosAtl.filter(a => jogosEq[a.eid]).map(a => ({ ...a, med: a.p / jogosEq[a.eid], nj: jogosEq[a.eid] })).sort((x, y) => y.med - x.med || x.nome.localeCompare(y.nome, "pt-BR"));
+      const verTodos = ls.get("medias-todos") === "1";
+      const lista = verTodos ? medAt : medAt.slice(0, 10);
+      w.append(h("div", { class: "card" }, h("h3", { text: "Média de pontos de cada atleta" }),
+        h("p", { class: "cap", text: "Pontos por jogo da equipe · " + (verTodos ? "todos os " + medAt.length + " atletas" : "os 10 melhores de " + medAt.length) }),
+        barrasH(lista.map((a, i) => ({ nome: a.nome, sub: a.enome, v: a.med, fmt: fmt1(a.med), extra: a.p + " pts em " + a.nj + (a.nj === 1 ? " jogo" : " jogos"), hi: i === 0 && a.med > 0 })), "Sem atletas cadastrados.", false, true),
+        medAt.length > 10 && h("button", { type: "button", class: "ghost t-mini", onclick: () => { ls.set("medias-todos", verTodos ? "0" : "1"); render(); } }, verTodos ? "Mostrar só os 10 melhores" : "Ver todos os atletas")));
+    }
     // por equipe
     if (!equipeSel || !eqDe(equipeSel)) equipeSel = T.equipes[0] && T.equipes[0].id;
     const daEq = todosAtl.filter(a => a.eid === equipeSel).sort((x, y) => y.p - x.p || x.nome.localeCompare(y.nome, "pt-BR"));
@@ -637,14 +692,14 @@ export function montarTorneio(ctx) {
     return w;
   }
 
-  function barrasH(itens, vazio, inverso) {
+  function barrasH(itens, vazio, inverso, decimal, semPos) {
     const box = h("div", { class: "hbars" });
     if (!itens.length) { box.append(h("p", { class: "cap", text: vazio })); return box; }
     const max = Math.max(1, ...itens.map(i => i.v));
-    itens.forEach((it, i) => box.append(h("div", { class: "hb" + (it.hi ? " p1" : ""), title: it.nome + ": " + it.v + " pontos" },
-      h("span", { class: "pos", style: "grid-row:1/3", text: (i + 1) + "º" }),
+    itens.forEach((it, i) => box.append(h("div", { class: "hb" + (it.hi ? " p1" : ""), title: it.nome + ": " + (it.fmt != null ? it.fmt : it.v) + (decimal ? " de média" : " pontos") },
+      h("span", { class: "pos", style: "grid-row:1/3", text: semPos ? "" : (i + 1) + "º" }),
       h("span", { class: "nm" }, it.nome, it.sub && h("small", { class: "t-subnm", text: " · " + it.sub })),
-      h("div", { class: "q" }, h("b", { text: it.v }), h("small", { text: it.extra || "" })),
+      h("div", { class: "q" }, h("b", { text: it.fmt != null ? it.fmt : it.v }), h("small", { text: it.extra || "" })),
       h("div", { class: "trk" }, h("i", { style: "width:" + (it.v / max * 100) + "%" + (inverso ? ";opacity:.55" : "") })))));
     return box;
   }
