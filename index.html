@@ -122,6 +122,17 @@ li button{padding:5px 10px;font-size:13px}
 .chart .bar{fill:var(--accent)}
 .chart .bar.hi{fill:var(--hi,var(--lane))}
 .chart .bar:hover{opacity:.8}
+.hbars{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.hb{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:8px}
+.hb .pos{font-family:var(--display);font-size:16px;color:var(--muted);text-align:center;align-self:center;line-height:1}
+.hb.p1 .pos{color:var(--hi,var(--lane))}
+.hb .nm{font-size:14px;font-weight:500;overflow-wrap:anywhere;line-height:1.2}
+.hb .trk{grid-column:2/3;height:12px;border-radius:0 4px 4px 0;background:var(--soft);overflow:hidden}
+.hb .trk i{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--accent)}
+.hb.p1 .trk i{background:var(--hi,var(--lane))}
+.hb .q{grid-row:1/3;grid-column:3;text-align:right;font-variant-numeric:tabular-nums;min-width:52px}
+.hb .q b{display:block;font-size:17px}
+.hb .q small{color:var(--muted);font-size:12px}
 .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
 ol.rank{list-style:none;margin:6px 0 0;padding:0}
 ol.rank li{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
@@ -223,6 +234,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
   <section id="p-met" hidden>
     <select id="met-periodo" aria-label="Período das métricas"></select>
     <div class="tiles" id="met-tiles"></div>
+    <div class="card"><h3>Top 5 – quem mais participou</h3><p class="cap" id="cap-top5"></p><div class="hbars" id="ch-top5"></div></div>
     <div class="card"><h3>Participação por treino</h3><p class="cap" id="cap-treinos"></p><div class="chart" id="ch-treinos"></div></div>
     <div class="card" id="card-dias"><h3>Média de atletas por dia</h3><p class="cap">Qual dia da semana tem mais adesão</p><div class="chart" id="ch-dias"></div></div>
     <div class="card"><h3>Horário das confirmações</h3><p class="cap" id="cap-horas"></p><div class="chart" id="ch-horas"></div></div>
@@ -601,6 +613,22 @@ function renderMetricas(){
   const tiles=$("met-tiles"); tiles.textContent="";
   [["Treinos",nT,"com lista registrada"],["Presenças",tot,"somando todos os treinos"],["Média",media.toFixed(1).replace(".",","),"atletas por treino"],["Recorde",maxV, diaMax?DIAS[parse(diaMax).getDay()]+", "+curto(diaMax):"—"],["Atletas",atletas,"diferentes no período"],["Menor lista",minV, nT? DIAS[parse(dias.find(d=>porDia[d]===minV)).getDay()]+", "+curto(dias.find(d=>porDia[d]===minV)):"—"]]
     .forEach(([a,b,c])=>{ const d=document.createElement("div"); d.className="tile"; const s1=document.createElement("span"); s1.textContent=a; const s2=document.createElement("b"); s2.textContent=b; const s3=document.createElement("small"); s3.textContent=c; d.append(s1,s2,s3); tiles.append(d); });
+  // top 5 atletas
+  const cont5={}; rows.forEach(p=>{ const k=key(p.nome); (cont5[k]||(cont5[k]={nome:p.nome,n:0})).n++; });
+  const top=Object.values(cont5).sort((a,b)=>b.n-a.n || a.nome.localeCompare(b.nome,"pt-BR")).slice(0,5);
+  const t5=$("ch-top5"); t5.textContent="";
+  $("cap-top5").textContent = nT ? "Presenças em "+nT+(nT===1?" treino":" treinos")+" do período" : "";
+  if (!top.length){ const p=document.createElement("p"); p.className="cap"; p.textContent="Ainda sem dados."; t5.append(p); }
+  let pos5=0, last5=null;
+  top.forEach((a,i)=>{
+    if (a.n!==last5){ pos5=i+1; last5=a.n; }
+    const row=document.createElement("div"); row.className="hb"+(pos5===1?" p1":""); row.title=a.nome+": "+a.n+(a.n===1?" presença":" presenças")+" ("+Math.round(a.n/nT*100)+"% dos treinos)";
+    const ps=document.createElement("span"); ps.className="pos"; ps.textContent=pos5+"º"; ps.style.gridRow="1/3";
+    const nm=document.createElement("span"); nm.className="nm"; nm.textContent=a.nome;
+    const tr=document.createElement("div"); tr.className="trk"; const bi=document.createElement("i"); bi.style.width=(a.n/top[0].n*100)+"%"; tr.append(bi);
+    const q=document.createElement("div"); q.className="q"; const qb=document.createElement("b"); qb.textContent=a.n; const qs=document.createElement("small"); qs.textContent=Math.round(a.n/nT*100)+"%"; q.append(qb,qs);
+    row.append(ps,nm,q,tr); t5.append(row);
+  });
   // participação por treino
   $("cap-treinos").textContent = nT ? "Atletas em cada treino · em branco, o recorde" : "";
   barras($("ch-treinos"), dias.map(d=>({rot:curto(d), rot2:DIAS[parse(d).getDay()].slice(0,3), v:porDia[d], hi:porDia[d]===maxV, dica:DIAS[parse(d).getDay()]+", "+br(d)+": "+porDia[d]+(porDia[d]===1?" atleta":" atletas")})), {rotLong:Object.keys(DIAS).length>1, aria:"Atletas por treino", minW:30});
