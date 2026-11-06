@@ -19,7 +19,7 @@
 :root{
   /* Uniforme do time: preto, vermelho e branco */
   --bg:#303135; --surface:#3a3b40; --fg:#f5f5f5; --muted:#b4b4bc;
-  --line:#4c4d54; --accent:#d81f2a; --accent-fg:#ffffff; --lane:#e2626b; --danger:#ff6b6b; --soft:#26272b; --ok:#4ccd83;
+  --line:#4c4d54; --accent:#d81f2a; --accent-fg:#ffffff; --lane:#e2626b; --danger:#ff6b6b; --soft:#26272b; --ok:#4ccd83; --hi:#f5f5f5;
   --display:"Anton",Impact,"Arial Narrow Bold",sans-serif;
   --script:"Yellowtail","Brush Script MT",cursive;
   --body:"Figtree",ui-sans-serif,system-ui,-apple-system,sans-serif;
@@ -44,8 +44,8 @@ h1 span{display:block;font-family:var(--script);text-transform:none;font-size:.8
 .admin-pill{position:absolute;right:0;top:0}
 h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;text-transform:uppercase;letter-spacing:.02em}
 .lane{height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--lane) 0 18px,var(--accent) 18px 36px)}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
-.tabs button{background:transparent;color:var(--fg);padding:9px 6px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.tabs button{background:transparent;color:var(--fg);padding:9px 2px;font-size:14px}
 .tabs button[aria-selected="true"]{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .12)}
 section{display:flex;flex-direction:column;gap:14px}
 select,input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0;font-size:16px}
@@ -106,6 +106,28 @@ li button{padding:5px 10px;font-size:13px}
 .bar{height:4px;border-radius:2px;background:var(--soft);margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent)}
 .stat{font-size:14px;color:var(--muted);margin:0}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.tile span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.tile b{display:block;font-family:var(--display);font-weight:400;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile small{display:block;font-size:12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px 10px;min-width:0}
+.card h3{margin:0;font-size:15px;font-weight:600}
+.cap{margin:2px 0 8px;font-size:13px;color:var(--muted)}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ax{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.chart .val{fill:var(--fg);font-size:10.5px;font-weight:600;font-family:var(--body)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .bar{fill:var(--accent)}
+.chart .bar.hi{fill:var(--hi,var(--lane))}
+.chart .bar:hover{opacity:.8}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+ol.rank{list-style:none;margin:6px 0 0;padding:0}
+ol.rank li{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+ol.rank li:first-child{border-top:0}
+ol.rank li b{font-variant-numeric:tabular-nums}
+ol.rank li span{color:var(--muted)}
 .install{background:var(--soft);border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
 .install p{margin:0}
 footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);padding-top:8px}
@@ -124,6 +146,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     <button type="button" role="tab" id="tab-treino" aria-selected="true">Treino</button>
     <button type="button" role="tab" id="tab-ranking" aria-selected="false">Ranking</button>
     <button type="button" role="tab" id="tab-hist" aria-selected="false">Histórico</button>
+    <button type="button" role="tab" id="tab-met" aria-selected="false">Métricas</button>
   </div>
 
   <!-- TREINO -->
@@ -193,6 +216,20 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     <div class="actions">
       <button type="button" class="ghost" id="copy-rk">Copiar ranking</button>
       <a class="btn wa" id="wa-rk" href="#" target="_blank" rel="noopener">Mandar ranking no grupo</a>
+    </div>
+  </section>
+
+  <!-- MÉTRICAS -->
+  <section id="p-met" hidden>
+    <select id="met-periodo" aria-label="Período das métricas"></select>
+    <div class="tiles" id="met-tiles"></div>
+    <div class="card"><h3>Participação por treino</h3><p class="cap" id="cap-treinos"></p><div class="chart" id="ch-treinos"></div></div>
+    <div class="card" id="card-dias"><h3>Média de atletas por dia</h3><p class="cap">Qual dia da semana tem mais adesão</p><div class="chart" id="ch-dias"></div></div>
+    <div class="card"><h3>Horário das confirmações</h3><p class="cap" id="cap-horas"></p><div class="chart" id="ch-horas"></div></div>
+    <div class="card"><h3>Antecedência das confirmações</h3><p class="cap">Quanto tempo antes do treino o pessoal confirma</p><div class="chart" id="ch-antec"></div></div>
+    <div class="duo">
+      <div class="card"><h3>Treinos mais cheios</h3><ol class="rank" id="top-mais"></ol></div>
+      <div class="card"><h3>Treinos mais vazios</h3><ol class="rank" id="top-menos"></ol></div>
     </div>
   </section>
 
@@ -513,16 +550,98 @@ function renderHist(){
   });
 }
 
+/* ---------- MÉTRICAS ---------- */
+let metPeriodo = "tudo";
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, text){ const e=document.createElementNS(SVGNS,tag); for (const k in attrs) e.setAttribute(k,attrs[k]); if (text!=null) e.textContent=text; return e; }
+function escala(v){ const st=[1,2,5,10,20,25,50,100,200]; const step=st.find(x=>Math.ceil(v/x)<=5)||Math.ceil(v/5); return {step, max:Math.max(step,Math.ceil(v/step)*step)}; }
+// barras verticais: itens {rot, v, dica, hi}
+function barras(box, itens, o={}){
+  box.textContent="";
+  if (!itens.length){ const p=document.createElement("p"); p.className="cap"; p.textContent="Ainda sem dados."; box.append(p); return; }
+  const n=itens.length, W=Math.max(320, n*(o.minW||22)), H=170, L=26, R=6, T=16, B=o.rotLong?40:22;
+  const esc=escala(Math.max(...itens.map(i=>i.v))||1), max=esc.max, pw=W-L-R, ph=H-T-B, slot=pw/n, bw=Math.max(4, Math.min(34, slot*0.62));
+  const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":o.aria||"gráfico"});
+  if (W>360) svg.style.minWidth=W+"px";
+  const ticks=[]; for (let t=0;t<=max+1e-9;t+=esc.step) ticks.push(t);
+  ticks.forEach(t=>{ const y=T+ph-(t/max)*ph; svg.append(el("line",{x1:L,x2:W-R,y1:y,y2:y,class:"grid"})); svg.append(el("text",{x:L-5,y:y+3,"text-anchor":"end",class:"ax"},o.fmt?o.fmt(t):String(Math.round(t*10)/10).replace(".",","))); });
+  const every = Math.ceil(n/(o.maxRot||14));
+  itens.forEach((it,i)=>{
+    const x=L+slot*i+(slot-bw)/2, h=(it.v/max)*ph, y=T+ph-h, r=Math.min(4,bw/2,h);
+    const g=el("g",{});
+    // barra com topo arredondado, base reta na linha zero
+    const d = h<=0 ? "" : `M${x},${T+ph} V${y+r} Q${x},${y} ${x+r},${y} H${x+bw-r} Q${x+bw},${y} ${x+bw},${y+r} V${T+ph} Z`;
+    if (d) g.append(el("path",{d,class:"bar"+(it.hi?" hi":"")}));
+    const hit=el("rect",{x:L+slot*i,y:T,width:slot,height:ph,fill:"transparent"}); hit.append(el("title",{},it.dica)); g.append(hit);
+    if (o.valores!==false && it.v>0 && (n<=16 || it.hi)) g.append(el("text",{x:x+bw/2,y:y-4,"text-anchor":"middle",class:"val"}, o.fmtVal?o.fmtVal(it.v):String(it.v).replace(".",",")));
+    if (i%every===0 || n<=14) g.append(el("text",{x:x+bw/2,y:H-B+13,"text-anchor":"middle",class:"ax"},it.rot));
+    if (o.rotLong && it.rot2) g.append(el("text",{x:x+bw/2,y:H-B+25,"text-anchor":"middle",class:"ax"},it.rot2));
+    svg.append(g);
+  });
+  box.append(svg);
+}
+function renderMetPeriodos(){
+  const sel=$("met-periodo"), dias=diasComLista();
+  const anos=[...new Set(dias.map(x=>x.slice(0,4)))].sort().reverse();
+  const meses=[...new Set(dias.map(x=>x.slice(0,7)))].sort().reverse();
+  const opts=[["tudo","Todo o período"],...anos.map(a=>[a,"Ano de "+a]),...meses.map(m=>[m,MESES[+m.slice(5)-1]+"/"+m.slice(0,4)])];
+  if (!opts.some(o=>o[0]===metPeriodo)) metPeriodo="tudo";
+  sel.textContent=""; opts.forEach(([v,t])=>{ const o=document.createElement("option"); o.value=v; o.textContent=t; sel.append(o); }); sel.value=metPeriodo;
+}
+$("met-periodo").onchange=e=>{ metPeriodo=e.target.value; renderMetricas(); };
+function renderMetricas(){
+  renderMetPeriodos();
+  const rows = todas.filter(p=>metPeriodo==="tudo" || p.dia.startsWith(metPeriodo));
+  const porDia={}; rows.forEach(p=>{ porDia[p.dia]=(porDia[p.dia]||0)+1; });
+  const dias=Object.keys(porDia).sort();
+  const nT=dias.length, tot=rows.length, media=nT? tot/nT : 0;
+  const maxV=nT?Math.max(...dias.map(d=>porDia[d])):0, minV=nT?Math.min(...dias.map(d=>porDia[d])):0;
+  const diaMax=dias.find(d=>porDia[d]===maxV), atletas=new Set(rows.map(p=>key(p.nome))).size;
+  // blocos de números
+  const tiles=$("met-tiles"); tiles.textContent="";
+  [["Treinos",nT,"com lista registrada"],["Presenças",tot,"somando todos os treinos"],["Média",media.toFixed(1).replace(".",","),"atletas por treino"],["Recorde",maxV, diaMax?DIAS[parse(diaMax).getDay()]+", "+curto(diaMax):"—"],["Atletas",atletas,"diferentes no período"],["Menor lista",minV, nT? DIAS[parse(dias.find(d=>porDia[d]===minV)).getDay()]+", "+curto(dias.find(d=>porDia[d]===minV)):"—"]]
+    .forEach(([a,b,c])=>{ const d=document.createElement("div"); d.className="tile"; const s1=document.createElement("span"); s1.textContent=a; const s2=document.createElement("b"); s2.textContent=b; const s3=document.createElement("small"); s3.textContent=c; d.append(s1,s2,s3); tiles.append(d); });
+  // participação por treino
+  $("cap-treinos").textContent = nT ? "Atletas em cada treino · em branco, o recorde" : "";
+  barras($("ch-treinos"), dias.map(d=>({rot:curto(d), rot2:DIAS[parse(d).getDay()].slice(0,3), v:porDia[d], hi:porDia[d]===maxV, dica:DIAS[parse(d).getDay()]+", "+br(d)+": "+porDia[d]+(porDia[d]===1?" atleta":" atletas")})), {rotLong:Object.keys(DIAS).length>1, aria:"Atletas por treino", minW:30});
+  // média por dia da semana
+  const ordem=[2,4,0].filter(w=>w in DIAS);
+  $("card-dias").hidden = ordem.length<2;
+  if (ordem.length>=2){
+    const med=ordem.map(w=>{ const ds=dias.filter(d=>parse(d).getDay()===w); const s=ds.reduce((a,d)=>a+porDia[d],0); return {w, n:ds.length, v: ds.length? s/ds.length : 0}; });
+    const mx=Math.max(...med.map(m=>m.v));
+    barras($("ch-dias"), med.map(m=>({rot:DIAS[m.w], v:Math.round(m.v*10)/10, hi:m.v===mx && mx>0, dica:DIAS[m.w]+": média de "+m.v.toFixed(1).replace(".",",")+" atletas em "+m.n+(m.n===1?" treino":" treinos")})), {aria:"Média por dia da semana"});
+  }
+  // horário do dia das confirmações
+  const horas=Array(24).fill(0); rows.forEach(p=>{ if (p.em) horas[new Date(p.em).getHours()]++; });
+  const pico=horas.indexOf(Math.max(...horas));
+  $("cap-horas").textContent = tot ? "Hora do dia em que os nomes entram · pico às "+pad(pico)+"h" : "";
+  barras($("ch-horas"), horas.map((v,h)=>({rot:pad(h)+"h", v, hi:v===horas[pico] && v>0, dica:pad(h)+":00 às "+pad(h)+":59 · "+v+(v===1?" confirmação":" confirmações")})), {aria:"Confirmações por hora do dia", maxRot:8, minW:14, valores:false});
+  // antecedência
+  const faixas=[["3d+",72,1e9],["2–3d",48,72],["1–2d",24,48],["12–24h",12,24],["6–12h",6,12],["3–6h",3,6],["1–3h",1,3],["< 1h",0,1]];
+  const cont=faixas.map(()=>0);
+  rows.forEach(p=>{ if (!p.em) return; const hrs=(inicio(p.dia).getTime()-p.em)/3600000; const i=faixas.findIndex(([,a,b])=>hrs>=a && hrs<b); if (i>=0) cont[i]++; });
+  const cmax=Math.max(...cont);
+  barras($("ch-antec"), faixas.map(([r],i)=>({rot:r, v:cont[i], hi:cont[i]===cmax && cmax>0, dica:r.replace("d"," dias").replace("3 dias+","3 dias ou mais")+" antes do treino: "+cont[i]+(cont[i]===1?" confirmação":" confirmações")})), {aria:"Antecedência das confirmações"});
+  // mais e menos cheios
+  const lst=(id,arr)=>{ const ol=$(id); ol.textContent=""; if(!arr.length){ const li=document.createElement("li"); li.textContent="Sem dados ainda."; ol.append(li); return; }
+    arr.forEach(d=>{ const li=document.createElement("li"); const a=document.createElement("span"); a.textContent=DIAS[parse(d).getDay()]+", "+br(d); const b=document.createElement("b"); b.textContent=porDia[d]; li.append(a,b); ol.append(li); }); };
+  const ordenado=[...dias].sort((a,b)=>porDia[b]-porDia[a] || b.localeCompare(a));
+  lst("top-mais", ordenado.slice(0,5));
+  lst("top-menos", [...dias].sort((a,b)=>porDia[a]-porDia[b] || b.localeCompare(a)).slice(0,5));
+}
+
 /* ---------- comum ---------- */
 function nomesConhecidos(){ const m={}; [...todas].sort((a,b)=>a.em-b.em).forEach(p=>m[key(p.nome)]=p.nome); return Object.values(m).sort((a,b)=>a.localeCompare(b,"pt-BR")); }
 function renderAll(){
-  renderSelect(); renderTreino(); renderPeriodos(); renderRanking(); renderHist();
+  renderSelect(); renderTreino(); renderPeriodos(); renderRanking(); renderHist(); if (!$("p-met").hidden) renderMetricas();
   const dl=$("nomes-conhecidos"); dl.textContent=""; nomesConhecidos().forEach(n=>{ const o=document.createElement("option"); o.value=n; dl.append(o); });
 }
-function showTab(t){ ["treino","ranking","hist"].forEach(x=>{ $("p-"+x).hidden = x!==t; $("tab-"+x).setAttribute("aria-selected",String(x===t)); }); }
+function showTab(t){ if (t==="met") renderMetricas(); ["treino","ranking","hist","met"].forEach(x=>{ $("p-"+x).hidden = x!==t; $("tab-"+x).setAttribute("aria-selected",String(x===t)); }); }
 $("tab-treino").onclick=()=>showTab("treino");
 $("tab-ranking").onclick=()=>showTab("ranking");
 $("tab-hist").onclick=()=>showTab("hist");
+$("tab-met").onclick=()=>showTab("met");
 
 /* ---------- login ---------- */
 $("btn-admin").onclick = async ()=>{
