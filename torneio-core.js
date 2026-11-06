@@ -179,3 +179,7 @@ export function statsAtletas(jogos) {
   }));
   return s;
 }
+
+// Firestore não aceita lista dentro de lista: os grupos ficam salvos como [{equipes:[...]}]
+export const gruposDe = et => ((et && et.grupos) || []).map(g => Array.isArray(g) ? g : (g.equipes || []));
+export const gruposParaSalvar = gs => gs.map(g => ({ equipes: g }));

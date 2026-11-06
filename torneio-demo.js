@@ -100,7 +100,7 @@ export function gerarDemo(esporte) {
   // ---- 1ª etapa: grupos + mata-mata ----
   const ids = C.embaralhar(equipes.map(e => e.id), R);
   const nG = C.sugerirGrupos(nEq), grupos = C.distribuir(ids, nG);
-  etapas[0].grupos = grupos; etapas[0].classificam = C.sugerirClassificados(nEq, nG);
+  etapas[0].grupos = C.gruposParaSalvar(grupos); etapas[0].classificam = C.sugerirClassificados(nEq, nG);
   let ordem = 0;
   grupos.forEach((g, gi) => C.todosContraTodos(g).forEach((par, r) => par.forEach(([a, b], o) => {
     const j = { id: "demo-j" + (ordem++), etapa: 0, fase: "grupo", grupo: gi, rodada: r + 1, ordem: o, a, b, faseNome: "Grupo " + C.letraGrupo(gi), stats: {} };
