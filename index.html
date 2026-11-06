@@ -838,7 +838,16 @@ if (!standalone){
 }
 window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); deferred=e; $("install").hidden=false; $("btn-install").hidden=false; $("install-text").textContent="Tenha o Biribol na tela inicial, como um app."; });
 $("btn-install").onclick = async ()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").hidden=true; };
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+// atualização automática: procura versão nova ao abrir/voltar ao app e recarrega quando ela assume
+if ("serviceWorker" in navigator) {
+  const tinhaVersao = !!navigator.serviceWorker.controller; let recarregou = false;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    const checar = () => reg.update().catch(()=>{});
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checar(); });
+    setInterval(checar, 30 * 60 * 1000);
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (!tinhaVersao || recarregou) return; recarregou = true; location.reload(); });
+}
 
 // Traz uma única vez a lista de 05/11/2026 (feita antes do app), quando o organizador entra
 const LISTA_ANTIGA = [["Flávio","2026-11-05T10:16:36-03:00"],["Leandro","2026-11-05T10:16:41-03:00"],["Clayton","2026-11-05T10:16:47-03:00"],["Marco","2026-11-05T10:16:51-03:00"],["Raul","2026-11-05T10:16:56-03:00"],["Fábio","2026-11-05T10:39:39-03:00"],["Rafael","2026-11-05T12:23:27-03:00"]];
