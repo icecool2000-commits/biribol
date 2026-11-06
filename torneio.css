@@ -144,3 +144,8 @@
 body.modo-torneio header h1{display:none}
 .t-jogo.bye{opacity:1;border-style:dashed}
 .t-jogo.bye .t-pl b{font-family:var(--body);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.t-exps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.t-exp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;white-space:normal;padding:12px;background:var(--soft);color:var(--fg);border:1px solid var(--line)}
+.t-exp b{font-size:14px;line-height:1.2}
+.t-exp small{font-size:12px;color:var(--muted);font-weight:400}
+.t-exp:hover:not(:disabled){border-color:var(--accent)}

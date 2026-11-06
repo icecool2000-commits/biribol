@@ -18,3 +18,4 @@
 - Editores: o organizador cria usuário/senha na tela "Editores" (`acesso.js`, e-mail interno @editores.mococa-esportes.app); papel guardado em `editores/{uid}`. Editor só mexe em torneios; treinos continuam só com o organizador.
 - Demonstração: `torneio-demo.js` gera um torneio fictício completo (botão "Gerar torneio de demonstração", só organizador/editor; marcado com demo:true e "[DEMO]" no nome). Biribol: menor placar de set 5, tiebreak até 30. Basquete: maior 100, menor 20, com prorrogação e bola de ouro.
 - Firestore NÃO aceita lista dentro de lista: grupos são salvos como [{equipes:[...]}] (use C.gruposDe / C.gruposParaSalvar).
+- Exportações (`exportar.js`): tabela de jogos (fases futuras em branco) e relatório completo em PDF e Excel; cores e logo em `marca` (index.html, montarTorneio). Mesmo módulo do app da LMB (repositório lmb).

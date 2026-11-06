@@ -2,6 +2,7 @@
 // Compartilhado pelos apps do Biribol e do Basquete (o esporte vem em ctx.esporte).
 import * as C from "./torneio-core.js";
 import { gerarDemo } from "./torneio-demo.js";
+import * as X from "./exportar.js";
 
 export function montarTorneio(ctx) {
   const { db, fs, esporte, col, maxAtletas, toast } = ctx;
@@ -164,7 +165,7 @@ export function montarTorneio(ctx) {
   async function criarDemo() {
     const id = "demo-" + Date.now().toString(36);
     try {
-      const { torneio, jogos: js } = gerarDemo(esporte);
+      const { torneio, jogos: js } = gerarDemo(esporte, ctx.nomeDemo);
       const b = writeBatch(db);
       b.set(doc(db, col, id), torneio);
       js.forEach(({ id: jid, ...d }) => b.set(doc(db, col, id, "jogos", jid), d));
@@ -209,9 +210,28 @@ export function montarTorneio(ctx) {
         js.length ? h("span", { class: "cap", text: fin + " de " + js.filter(j => !j.wo).length + " jogos encerrados" }) : null,
         camp && h("span", { class: "t-campeao", text: "🏆 Campeã: " + eqNome(camp) })));
     });
+    w.append(cartaoExportar());
     if (T.demo) w.append(h("p", { class: "cap", text: "Este é um torneio de demonstração, com equipes e atletas fictícios. Para apagar: Editar → Apagar torneio." }));
     if (demoBtn) w.append(demoBtn);
     return w;
+  }
+
+  let exportando = null;
+  function cartaoExportar() {
+    const btn = (rot, desc, chave, fn) => h("button", { type: "button", class: "t-exp", disabled: !!exportando, onclick: async () => {
+      exportando = chave; render();
+      try { await fn(T, jogos, esporte, ctx.marca); toast("Arquivo gerado. Confira seus downloads."); }
+      catch (e) { console.error(e); toast("Não deu para gerar o arquivo. Verifique a internet e tente de novo."); }
+      exportando = null; render();
+    } }, h("b", { text: exportando === chave ? "Gerando…" : rot }), h("small", { text: desc }));
+    return h("div", { class: "t-card" },
+      h("h3", { text: "Exportar e imprimir" }),
+      h("p", { class: "cap", text: "Tabela de jogos: grupos, jogos e chave do mata-mata, com as fases seguintes em branco para preencher à mão. Relatório: resultados, classificação, estatísticas e gráficos." }),
+      h("div", { class: "t-exps" },
+        btn("Tabela de jogos · PDF", "Para imprimir", "tp", X.tabelaPDF),
+        btn("Tabela de jogos · Excel", "Planilha para preencher", "tx", X.tabelaXLSX),
+        btn("Relatório completo · PDF", "Estatísticas e gráficos", "rp", X.relatorioPDF),
+        btn("Relatório completo · Excel", "Planilhas e gráficos", "rx", X.relatorioXLSX)));
   }
 
   /* ---------- aba Equipes ---------- */

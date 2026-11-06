@@ -9,7 +9,7 @@ const SOBRE = ["Silva","Souza","Oliveira","Santos","Lima","Pereira","Costa","Rib
 const EQ_BIRIBOL = ["Tubarões da AEM","Piratas do Lago","Golfinhos Mococa","Arraias FC","Marlins","Orcas","Lontras","Baleias Azuis"];
 const EQ_BASQUETE = ["Dinos","Raptors Mococa","Trovões","Falcões","Lobos da AEM","Panteras","Gaviões","Tigres","Corujas","Leões do Vale"];
 
-export function gerarDemo(esporte) {
+export function gerarDemo(esporte, nomeDemo) {
   const BIR = esporte === "biribol", R = rng(BIR ? 2026 : 1977);
   const int = (a, b) => a + Math.floor(R() * (b - a + 1));
   const nEq = BIR ? 8 : 10, nAt = BIR ? 8 : 10;
@@ -132,6 +132,6 @@ export function gerarDemo(esporte) {
     }
   }
 
-  const torneio = { nome: "[DEMO] " + (BIR ? "Copa Biribol Mococa" : "Copa Família Basquete Mococa"), demo: true, equipes, etapas, criado: Date.now() };
+  const torneio = { nome: "[DEMO] " + (nomeDemo || (BIR ? "Copa Biribol Mococa" : "Copa Família Basquete Mococa")), demo: true, equipes, etapas, criado: Date.now() };
   return { torneio, jogos: jogos.map(j => ({ ...j, criado: Date.now() })) };
 }

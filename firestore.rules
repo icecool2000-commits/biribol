@@ -94,6 +94,14 @@ service cloud.firestore {
         allow write: if podeTorneio();
       }
     }
+    match /lmb_torneios/{t} {
+      allow read: if true;
+      allow write: if podeTorneio();
+      match /jogos/{j} {
+        allow read: if true;
+        allow write: if podeTorneio();
+      }
+    }
     match /basquete_torneios/{t} {
       allow read: if true;
       allow write: if podeTorneio();
