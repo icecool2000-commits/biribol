@@ -6,6 +6,7 @@
 <title>Biribol Mococa</title>
 <meta name="description" content="Lista de presença, ranking e histórico dos treinos do Biribol Oficial Mococa.">
 <meta name="theme-color" content="#303135">
+<link rel="stylesheet" href="torneio.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -153,6 +154,13 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     <h1>Presença <span>nos treinos</span></h1>
   </header>
 
+  <div class="modos" role="group" aria-label="Modo de uso">
+    <button type="button" id="modo-btn-treino" aria-pressed="true">Treino / Rachão</button>
+    <button type="button" id="modo-btn-torneio" aria-pressed="false">🏆 Torneio</button>
+  </div>
+
+  <div id="modo-treino" class="t-col">
+
   <div class="tabs" role="tablist">
     <button type="button" role="tab" id="tab-treino" aria-selected="true">Treino</button>
     <button type="button" role="tab" id="tab-ranking" aria-selected="false">Ranking</button>
@@ -251,18 +259,56 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     <ol class="list" id="h-list"></ol>
   </section>
 
+  </div>
+
+  <div id="modo-torneio" class="t-col" hidden>
+    <div id="torneio-root" class="t-col"></div>
+    <div class="t-card" id="ed-painel" hidden>
+      <h3>Editores do torneio</h3>
+      <p class="cap">Crie um usuário e senha para cada pessoa que vai montar o torneio e marcar placar. Passe os dados para ela pelo WhatsApp. Remover tira o acesso na hora.</p>
+      <div class="ed-lista" id="ed-lista"></div>
+      <form id="ed-form" class="t-form">
+        <div class="t-linha">
+          <input id="ed-nome" placeholder="Nome (ex.: Clayton)" maxlength="30" aria-label="Nome do editor">
+          <input id="ed-usuario" placeholder="Usuário (ex.: clayton)" maxlength="30" autocomplete="off" autocapitalize="none" aria-label="Usuário">
+          <input id="ed-senha" placeholder="Senha (mín. 6)" maxlength="40" autocomplete="new-password" aria-label="Senha do editor">
+        </div>
+        <button type="submit" id="ed-criar">Criar acesso de editor</button>
+      </form>
+    </div>
+  </div>
+
   <footer>
     <button type="button" class="linkish" id="btn-admin">Entrar como organizador</button>
-    <button type="button" class="linkish" id="btn-logout" hidden>Sair do modo organizador</button>
+    <button type="button" class="linkish" id="btn-editor">Entrar como editor</button>
+    <button type="button" class="linkish" id="btn-editores" hidden>Editores</button>
+    <span id="ed-quem" hidden></span>
+    <button type="button" class="linkish" id="btn-senha" hidden>Trocar senha</button>
+    <button type="button" class="linkish" id="btn-logout" hidden>Sair</button>
   </footer>
+  <div class="acesso" id="acesso" hidden>
+    <form id="form-editor" class="t-card" hidden>
+      <h3>Entrar como editor</h3>
+      <input id="lg-usuario" placeholder="Usuário" autocomplete="username" autocapitalize="none" aria-label="Usuário">
+      <input id="lg-senha" type="password" placeholder="Senha" autocomplete="current-password" aria-label="Senha">
+      <div class="t-linha"><button type="submit">Entrar</button><button type="button" class="ghost" id="lg-cancelar">Cancelar</button></div>
+    </form>
+    <form id="form-senha" class="t-card" hidden>
+      <h3>Trocar minha senha</h3>
+      <input id="nv-senha" type="password" placeholder="Nova senha (mín. 6)" autocomplete="new-password" aria-label="Nova senha">
+      <div class="t-linha"><button type="submit">Salvar senha</button><button type="button" class="ghost" id="nv-cancelar">Cancelar</button></div>
+    </form>
+  </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, collection, collectionGroup, doc, onSnapshot, setDoc, deleteDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, collection, collectionGroup, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig, ADMIN_EMAILS } from "./config.js";
+import { montarTorneio } from "./torneio.js";
+import { DOMINIO, entrarEditor, trocarSenha, criarEditor, ouvirEditores, ouvirSouEditor, removerEditor, usuarioDe } from "./acesso.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -284,7 +330,7 @@ const limpa = n => n.trim().replace(/\s+/g," ").split(" ").map(p => p ? p[0].toL
 const key = n => n.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60) || "x";
 const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
 
-let user = null, isAdmin = false;
+let user = null, isAdmin = false, isEditor = false, pararEditor = null, pararLista = null, torneio = null;
 let todas = [];           // {dia, id, nome, em(ms), uid}
 let treinosCfg = {};      // dia -> {local}
 let cfg = { local: "" };
@@ -680,15 +726,94 @@ $("btn-admin").onclick = async ()=>{
     else if (e && e.code!=="auth/popup-closed-by-user" && e.code!=="auth/cancelled-popup-request") toast("Não deu para entrar. Tente de novo.");
   }
 };
-$("btn-logout").onclick = async ()=>{ await signOut(auth); };
+$("btn-logout").onclick = async ()=>{ fecharAcesso(); await signOut(auth); };
+
+/* ---------- modos de uso ---------- */
+const MODO_KEY = "biribol-modo";
+function mostrarModo(m){
+  try{ localStorage.setItem(MODO_KEY, m); }catch(e){}
+  $("modo-treino").hidden = m!=="treino"; $("modo-torneio").hidden = m!=="torneio";
+  document.body.classList.toggle("modo-torneio", m==="torneio");
+  $("modo-btn-treino").setAttribute("aria-pressed", String(m==="treino")); $("modo-btn-torneio").setAttribute("aria-pressed", String(m==="torneio"));
+  if (m==="torneio" && !torneio) torneio = montarTorneio({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch }, esporte:"biribol", col:"biribol_torneios", maxAtletas:8, toast, root:$("torneio-root"), podeEditar:()=>isAdmin||isEditor });
+  atualizarAcesso();
+}
+$("modo-btn-treino").onclick=()=>mostrarModo("treino");
+$("modo-btn-torneio").onclick=()=>mostrarModo("torneio");
+
+/* ---------- acessos ---------- */
+function fecharAcesso(){ $("acesso").hidden=true; $("form-editor").hidden=true; $("form-senha").hidden=true; }
+function atualizarAcesso(){
+  const editorLogado = isEditor && user && !user.isAnonymous;
+  $("admin-pill").hidden = !(isAdmin||isEditor); $("admin-pill").textContent = isAdmin ? "Organizador" : "Editor";
+  $("btn-admin").hidden = isAdmin||editorLogado; $("btn-editor").hidden = isAdmin||editorLogado;
+  $("btn-logout").hidden = !(isAdmin||editorLogado); $("btn-logout").textContent = isAdmin ? "Sair do modo organizador" : "Sair";
+  $("btn-senha").hidden = !editorLogado;
+  $("ed-quem").hidden = !editorLogado; if (editorLogado) $("ed-quem").textContent = "Editor: " + usuarioDe(user.email);
+  const torneioAberto = !$("modo-torneio").hidden;
+  $("btn-editores").hidden = !(isAdmin && torneioAberto);
+  if (!isAdmin){ $("ed-painel").hidden = true; if (pararLista){ pararLista(); pararLista=null; } }
+  if (torneio) torneio.atualizarPermissao();
+}
+$("btn-editor").onclick=()=>{ $("acesso").hidden=false; $("form-senha").hidden=true; $("form-editor").hidden=false; $("lg-usuario").focus(); };
+$("lg-cancelar").onclick=fecharAcesso; $("nv-cancelar").onclick=fecharAcesso;
+$("form-editor").addEventListener("submit", async e=>{
+  e.preventDefault();
+  try{ await entrarEditor(auth, $("lg-usuario").value, $("lg-senha").value); $("lg-senha").value=""; fecharAcesso(); toast("Bem-vindo! Você pode editar o torneio."); }
+  catch(err){ console.error(err); toast("Usuário ou senha incorretos."); }
+});
+$("btn-senha").onclick=()=>{ $("acesso").hidden=false; $("form-editor").hidden=true; $("form-senha").hidden=false; $("nv-senha").focus(); };
+$("form-senha").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const n=$("nv-senha").value; if (n.length<6){ toast("A senha precisa ter pelo menos 6 caracteres."); return; }
+  try{ await trocarSenha(auth, n); $("nv-senha").value=""; fecharAcesso(); toast("Senha trocada."); }
+  catch(err){ console.error(err); toast(err && err.code==="auth/requires-recent-login" ? "Saia e entre de novo para trocar a senha." : "Não deu para trocar a senha."); }
+});
+$("btn-editores").onclick=()=>{
+  const p=$("ed-painel"); p.hidden=!p.hidden;
+  if (!p.hidden){ p.scrollIntoView({behavior:"smooth", block:"start"}); if (!pararLista) pararLista = ouvirEditores(db, lista=>{
+    const box=$("ed-lista"); box.textContent="";
+    if (!lista.length){ const x=document.createElement("p"); x.className="cap"; x.textContent="Nenhum editor ainda."; box.append(x); }
+    lista.forEach(ed=>{ const row=document.createElement("div"); row.className="ed-item";
+      const t=document.createElement("div"); const b=document.createElement("b"); b.textContent=ed.nome; const sm=document.createElement("small"); sm.textContent=" · usuário: "+ed.usuario; t.append(b,sm);
+      const rm=document.createElement("button"); rm.type="button"; rm.className="danger t-mini"; rm.textContent="Remover";
+      let armado=false; rm.onclick=async ()=>{ if(!armado){ armado=true; rm.textContent="Confirmar remoção"; setTimeout(()=>{ armado=false; rm.textContent="Remover"; },4000); return; }
+        try{ await removerEditor(db, ed.uid); toast("Acesso de "+ed.nome+" removido."); }catch(e){ toast("Não deu para remover."); } };
+      row.append(t,rm); box.append(row); });
+  }); }
+};
+$("ed-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const nome=$("ed-nome").value.trim(), usuario=$("ed-usuario").value, senha=$("ed-senha").value;
+  $("ed-criar").disabled=true;
+  try{
+    const u = await criarEditor(firebaseConfig, db, { usuario, nome, senha });
+    const texto = "Acesso de editor – Biribol Mococa\nApp: "+location.origin+location.pathname+"\nNo app: Torneio → Entrar como editor\nUsuário: "+u+"\nSenha: "+senha+"\n(Troque a senha no primeiro acesso em \"Trocar senha\".)";
+    try{ await navigator.clipboard.writeText(texto); toast("Editor criado. Dados copiados para enviar."); }catch(_){ toast("Editor criado: usuário "+u+"."); }
+    $("ed-nome").value=""; $("ed-usuario").value=""; $("ed-senha").value="";
+  }catch(err){
+    console.error(err);
+    const c = (err && (err.code||err.message)) || "";
+    toast(c.includes("email-already-in-use") ? "Esse usuário já existe." : c.includes("usuario-curto") ? "Usuário precisa de pelo menos 3 letras." : c.includes("senha-curta")||c.includes("weak-password") ? "Senha precisa ter pelo menos 6 caracteres." : "Não deu para criar o editor.");
+  }
+  $("ed-criar").disabled=false;
+});
 getRedirectResult(auth).catch(()=>{});
 
 onAuthStateChanged(auth, async u=>{
-  if (!u){ user=null; isAdmin=false; try{ await signInAnonymously(auth); }catch(e){ console.error(e); toast("Sem conexão com o servidor."); } return; }
-  user=u;
+  if (pararEditor){ pararEditor(); pararEditor=null; }
+  if (!u){ user=null; isAdmin=false; isEditor=false; atualizarAcesso(); try{ await signInAnonymously(auth); }catch(e){ console.error(e); toast("Sem conexão com o servidor."); } return; }
+  user=u; isEditor=false;
   isAdmin = !u.isAnonymous && ADMIN_EMAILS.includes((u.email||"").toLowerCase());
-  if (!u.isAnonymous && !isAdmin){ toast("Essa conta não é de organizador."); await signOut(auth); return; }
-  $("admin-pill").hidden=!isAdmin; $("btn-admin").hidden=isAdmin; $("btn-logout").hidden=!isAdmin;
+  if (!u.isAnonymous && !isAdmin){
+    if ((u.email||"").endsWith(DOMINIO)){
+      pararEditor = ouvirSouEditor(db, u.uid, async ok=>{
+        if (!ok){ toast("Seu acesso de editor foi removido."); await signOut(auth); return; }
+        isEditor = true; atualizarAcesso(); renderAll();
+      });
+    } else { toast("Essa conta não é de organizador."); await signOut(auth); return; }
+  }
+  atualizarAcesso();
   renderAll();
   if (isAdmin) setTimeout(importarListaAntiga, 3000);
 });
@@ -736,6 +861,8 @@ window.__importar = async (dia, itens) => {
 setInterval(()=>{ const p=proximoTreino(); if (p!==renderSelect.ultimo){ if (atual===renderSelect.ultimo || !atual) atual=p; renderSelect.ultimo=p; renderAll(); } else renderTreino(); }, 30000);
 renderSelect.ultimo = proximoTreino();
 renderAll();
+let modoIni="treino"; try{ modoIni = localStorage.getItem(MODO_KEY)||"treino"; }catch(e){}
+mostrarModo(modoIni==="torneio"?"torneio":"treino");
 </script>
 </body>
 </html>

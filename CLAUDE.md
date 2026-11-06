@@ -10,3 +10,9 @@
 - Não usar mensagens automáticas no WhatsApp (não há API gratuita para grupos); o app usa link wa.me para compartilhar.
 - Não reduzir as regras de segurança: qualquer um cria o próprio nome, só o dono tira o próprio, só o organizador edita tudo.
 - Trava de horário: a lista de cada treino abre quando o treino anterior começa e fecha no horário do treino (no app em `ABRE`/`inicio`, e no servidor em `firestore.rules`). O organizador pode corrigir listas fechadas.
+- Modos de uso: chave "Treino / Rachão" x "Torneio" no topo (lembrada por aparelho).
+- Modo Torneio: `torneio.js` (telas) + `torneio-core.js` (regras puras: grupos, todos contra todos, sets/quartos, classificação, mata-mata com byes) + `torneio.css`. São IGUAIS nos dois repositórios: mudou em um, copie para o outro.
+- Dados do torneio: coleção `<esporte>_torneios/{id}` (nome, equipes com atletas, etapas com grupos) e subcoleção `jogos` (placar, stats por atleta {p, b, as}, de:[jogos de origem] no mata-mata).
+- Biribol: melhor de 3 sets (21, 21, tiebreak 15, sempre 2 de vantagem). Basquete: 4 quartos de 10 min, empate só na classificação; no mata-mata prorrogação e bola de ouro.
+- Desempate na classificação: vitórias, empates (basquete), saldo de pontos, pontos feitos.
+- Editores: o organizador cria usuário/senha na tela "Editores" (`acesso.js`, e-mail interno @editores.mococa-esportes.app); papel guardado em `editores/{uid}`. Editor só mexe em torneios; treinos continuam só com o organizador.
