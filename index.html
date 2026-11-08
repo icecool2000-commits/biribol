@@ -45,8 +45,10 @@ h1 span{display:block;font-family:var(--script);text-transform:none;font-size:.8
 .admin-pill{position:absolute;right:0;top:0}
 h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;text-transform:uppercase;letter-spacing:.02em}
 .lane{height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--lane) 0 18px,var(--accent) 18px 36px)}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
-.tabs button{background:transparent;color:var(--fg);padding:9px 2px;font-size:14px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.tabs button{background:transparent;color:var(--fg);padding:9px 2px;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tabs button.vivo{color:#ff4d55;font-weight:700}
+.tabs button.vivo[aria-selected="true"]{color:#fff}
 .tabs button[aria-selected="true"]{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .12)}
 section{display:flex;flex-direction:column;gap:14px}
 select,input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0;font-size:16px}
@@ -166,6 +168,7 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     <button type="button" role="tab" id="tab-ranking" aria-selected="false">Ranking</button>
     <button type="button" role="tab" id="tab-hist" aria-selected="false">Histórico</button>
     <button type="button" role="tab" id="tab-met" aria-selected="false">Métricas</button>
+    <button type="button" role="tab" id="tab-aovivo" aria-selected="false">Ao vivo</button>
   </div>
 
   <!-- TREINO -->
@@ -253,6 +256,9 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
     </div>
   </section>
 
+  <!-- AO VIVO (rachão) -->
+  <section id="p-aovivo" hidden></section>
+
   <!-- HISTÓRICO -->
   <section id="p-hist" hidden>
     <p class="stat" id="h-stat"></p>
@@ -308,6 +314,7 @@ import { getAuth, onAuthStateChanged, signInAnonymously, GoogleAuthProvider, sig
 import { initializeFirestore, persistentLocalCache, collection, collectionGroup, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig, ADMIN_EMAILS } from "./config.js";
 import { montarTorneio } from "./torneio.js";
+import { montarAoVivo } from "./aovivo.js";
 import { DOMINIO, entrarEditor, trocarSenha, criarEditor, ouvirEditores, ouvirSouEditor, removerEditor, usuarioDe } from "./acesso.js";
 
 const app = initializeApp(firebaseConfig);
@@ -711,11 +718,24 @@ function renderAll(){
   renderSelect(); renderTreino(); renderPeriodos(); renderRanking(); renderHist(); if (!$("p-met").hidden) renderMetricas();
   const dl=$("nomes-conhecidos"); dl.textContent=""; nomesConhecidos().forEach(n=>{ const o=document.createElement("option"); o.value=n; dl.append(o); });
 }
-function showTab(t){ if (t==="met") renderMetricas(); ["treino","ranking","hist","met"].forEach(x=>{ $("p-"+x).hidden = x!==t; $("tab-"+x).setAttribute("aria-selected",String(x===t)); }); }
+function showTab(t){ if (t==="met") renderMetricas(); if (t==="aovivo") montarVivoTreino(); ["treino","ranking","hist","met","aovivo"].forEach(x=>{ $("p-"+x).hidden = x!==t; $("tab-"+x).setAttribute("aria-selected",String(x===t)); }); }
 $("tab-treino").onclick=()=>showTab("treino");
 $("tab-ranking").onclick=()=>showTab("ranking");
 $("tab-hist").onclick=()=>showTab("hist");
 $("tab-met").onclick=()=>showTab("met");
+$("tab-aovivo").onclick=()=>showTab("aovivo");
+// Ao vivo do treino/rachão: mesmo canal do YouTube; placar marcado à mão (não há súmula no treino)
+let vivoTreino = null;
+function montarVivoTreino(){
+  if (vivoTreino) return;
+  vivoTreino = montarAoVivo({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc }, toast, esporte:"biribol", col:"biribol_torneios",
+    app:"biribol-treino", canal:{ id:"UC-9rRBBjS7XEcRUwRSfYpFg", handle:"BiribolMococa" }, canalDe:"biribol", instagram:"biribol_mococa",
+    placarManual:true, rotuloManual:"Rachão", podeEditar:()=>isAdmin||isEditor, torneio:()=>null, jogos:()=>[],
+    marca:{ titulo:"Biribol Oficial Mococa", logo:"logo.jpg", escura:"#1f1f23", cor:"#d81f2a", destaque:"#e2626b" }, autor:()=>user ? (user.email||"") : null,
+    mudouVivo:()=>{ const v = vivoTreino && vivoTreino.estado() && vivoTreino.estado().aoVivo; $("tab-aovivo").textContent = v ? "● Ao vivo" : "Ao vivo"; $("tab-aovivo").classList.toggle("vivo", !!v); } });
+  $("p-aovivo").append(vivoTreino.tela());
+}
+setTimeout(montarVivoTreino, 1500);
 
 /* ---------- login ---------- */
 $("btn-admin").onclick = async ()=>{
@@ -754,6 +774,7 @@ function atualizarAcesso(){
   $("btn-editores").hidden = !(isAdmin && torneioAberto);
   if (!isAdmin){ $("ed-painel").hidden = true; if (pararLista){ pararLista(); pararLista=null; } }
   if (torneio) torneio.atualizarPermissao();
+  if (vivoTreino) vivoTreino.tela();
 }
 $("btn-editor").onclick=()=>{ $("acesso").hidden=false; $("form-senha").hidden=true; $("form-editor").hidden=false; $("lg-usuario").focus(); };
 $("lg-cancelar").onclick=fecharAcesso; $("nv-cancelar").onclick=fecharAcesso;
