@@ -729,7 +729,7 @@ let vivoTreino = null;
 function montarVivoTreino(){
   if (vivoTreino) return;
   vivoTreino = montarAoVivo({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc }, toast, esporte:"biribol", col:"biribol_torneios",
-    app:"biribol-treino", canal:{ id:"UC-9rRBBjS7XEcRUwRSfYpFg", handle:"BiribolMococa" }, canalDe:"biribol", instagram:"biribol_mococa",
+    app:"biribol-treino", canal:{ id:"UCv2QFBwysAf_ochScxkfDmA", handle:"LMB-LigaMetropolitanaBiribol" }, canalDe:"biribol", instagram:"biribol_mococa",
     placarManual:true, rotuloManual:"Rachão", podeEditar:()=>isAdmin||isEditor, torneio:()=>null, jogos:()=>[],
     marca:{ titulo:"Biribol Oficial Mococa", logo:"logo.jpg", escura:"#1f1f23", cor:"#d81f2a", destaque:"#e2626b" }, autor:()=>user ? (user.email||"") : null,
     mudouVivo:()=>{ const v = vivoTreino && vivoTreino.estado() && vivoTreino.estado().aoVivo; $("tab-aovivo").textContent = v ? "● Ao vivo" : "Ao vivo"; $("tab-aovivo").classList.toggle("vivo", !!v); } });
@@ -755,7 +755,7 @@ function mostrarModo(m){
   $("modo-treino").hidden = m!=="treino"; $("modo-torneio").hidden = m!=="torneio";
   document.body.classList.toggle("modo-torneio", m==="torneio");
   $("modo-btn-treino").setAttribute("aria-pressed", String(m==="treino")); $("modo-btn-torneio").setAttribute("aria-pressed", String(m==="torneio"));
-  if (m==="torneio" && !torneio) torneio = montarTorneio({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch }, aoVivo:{ app:"biribol", canal:{ id:"UC-9rRBBjS7XEcRUwRSfYpFg", handle:"BiribolMococa" }, instagram:"biribol_mococa" }, midias:{ app:"biribol", perfis:[{ usuario:"biribol_mococa", nome:"Biribol Mococa" }], hashtags:"#biribol #biribolmococa #mococa" }, autor:()=>user ? (user.email||"") : null, esporte:"biribol", col:"biribol_torneios", maxAtletas:8, toast, root:$("torneio-root"), podeEditar:()=>isAdmin||isEditor, marca:{ titulo:"Biribol Oficial Mococa", logo:"logo.jpg", escura:"#1f1f23", cor:"#d81f2a", destaque:"#e2626b" } });
+  if (m==="torneio" && !torneio) torneio = montarTorneio({ db, fs:{ collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch }, aoVivo:{ app:"biribol", canal:{ id:"UCv2QFBwysAf_ochScxkfDmA", handle:"LMB-LigaMetropolitanaBiribol" }, instagram:"biribol_mococa" }, midias:{ app:"biribol", perfis:[{ usuario:"biribol_mococa", nome:"Biribol Mococa" }], hashtags:"#biribol #biribolmococa #mococa" }, autor:()=>user ? (user.email||"") : null, esporte:"biribol", col:"biribol_torneios", maxAtletas:8, toast, root:$("torneio-root"), podeEditar:()=>isAdmin||isEditor, marca:{ titulo:"Biribol Oficial Mococa", logo:"logo.jpg", escura:"#1f1f23", cor:"#d81f2a", destaque:"#e2626b" } });
   atualizarAcesso();
 }
 $("modo-btn-treino").onclick=()=>mostrarModo("treino");
