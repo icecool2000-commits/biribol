@@ -151,9 +151,22 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
 </style>
 </head>
 <body>
+<script src="biribol-anim.js"></script>
+<script>
+/* Abertura: cortada na piscina de biribol + logo animado (biribol-anim.js, mesmo arquivo da Liga). Uma vez por sessão. */
+try{ BiribolAnim.abertura({ tipo:"bm", chave:"bm-abertura", app:".wrap",
+  faixaTexto:"BIRIBOL MOCOCA", legenda:"Treinos · Torneios · Ao vivo", ponto:"PONTO!",
+  placar:{ a:"MOCOCA", b:"VISITANTE", sa:20, sb:19, set:"2º SET" },
+  rotulo:"Abertura do app Biribol Mococa: na piscina de biribol, o atacante salta, corta e marca o ponto; depois aparece o logo animado.",
+  cores:{ fundo:["#0d0d10","#2b1418"], agua:["#43b7e8","#1679b8","#0b3f6e"], azulejo:["#e3edf2","#b7ccd9"], borda:"#ffffff", poste:"#c9d1d9", deck:"#232428",
+    faixa:["#d81f2a","#141414","#d81f2a"], faixaTexto:"#ffffff",
+    casa:{ touca:"#d81f2a", sunga:"#141414", detalhe:"#ffffff" }, fora:{ touca:"#f2f2f2", sunga:"#1f4e9a", detalhe:"#9cc3ff" },
+    bola:["#ffffff","#d81f2a","#2a2a2a"], destaque:"#e8333a", onda:["#d81f2a","#16161a"], finalCor:"#3d161b" } });
+}catch(e){ console.error(e); }
+</script>
 <div class="wrap">
   <header>
-    <div class="top"><img class="logo" src="logo.jpg" alt="Biribol Mococa" width="600" height="300"><span class="admin-pill" id="admin-pill" hidden>Organizador</span></div>
+    <div class="top"><div class="logo" id="logo-anim" role="img" aria-label="Biribol Mococa"><img src="logo.jpg" alt="" width="600" height="300" style="width:100%;height:auto"></div><span class="admin-pill" id="admin-pill" hidden>Organizador</span></div>
     <h1>Presença <span>nos treinos</span></h1>
   </header>
 
@@ -311,6 +324,9 @@ footer{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13p
 </div>
 <div class="toast" id="toast" role="status"></div>
 
+<script>
+try{ BiribolAnim.logo(document.getElementById("logo-anim"), "bm", { entrada:true, depoisDe: (window.__semAbertura || !document.getElementById("abertura")) ? null : "abertura-fim", atraso:250 }); }catch(e){ console.error(e); }
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
