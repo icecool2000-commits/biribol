@@ -390,11 +390,15 @@ const ABRE = {2:57, 4:48, 0:63};
 // início do treino no horário de Brasília
 const inicio = dia => new Date(dia+"T"+HORA(parse(dia).getDay())+":00-03:00");
 const abertura = dia => new Date(inicio(dia).getTime() - ABRE[parse(dia).getDay()]*3600000);
-const aberto = dia => { const n=Date.now(); return n < inicio(dia).getTime() && n >= abertura(dia).getTime(); };
+// a lista fecha no horário do treino; no domingo, 10 minutos depois (10:10). Mesma regra em firestore.rules (biribolAberto)
+const TOLERA = {0:10};
+const fecha = dia => new Date(inicio(dia).getTime() + (TOLERA[parse(dia).getDay()]||0)*60000);
+const hm = dt => pad(dt.getHours())+":"+pad(dt.getMinutes());
+const aberto = dia => { const n=Date.now(); return n < fecha(dia).getTime() && n >= abertura(dia).getTime(); };
 const fmtQuando = dt => DIAS[dt.getDay()].toLowerCase()+", "+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+" às "+pad(dt.getHours())+":"+pad(dt.getMinutes());
 function proximoTreino(){
   const d = new Date(); d.setHours(0,0,0,0);
-  for (let i=0;i<15;i++){ if (isTreino(d) && inicio(iso(d)).getTime() > Date.now()) return iso(d); d.setDate(d.getDate()+1); }
+  for (let i=0;i<15;i++){ if (isTreino(d) && fecha(iso(d)).getTime() > Date.now()) return iso(d); d.setDate(d.getDate()+1); }
   return iso(d);
 }
 const hoje = () => iso(new Date());
@@ -417,7 +421,7 @@ function renderSelect(){
   sel.textContent="";
   datas.forEach(id=>{
     const d=parse(id), n=lista(id).length, o=document.createElement("option");
-    o.value=id; o.textContent=DIAS[d.getDay()]+", "+br(id)+(id===prox?" · aberto":(inicio(id).getTime()<=Date.now()?" · fechado":""))+(n?" · "+n+(n===1?" nome":" nomes"):"");
+    o.value=id; o.textContent=DIAS[d.getDay()]+", "+br(id)+(id===prox?" · aberto":(fecha(id).getTime()<=Date.now()?" · fechado":""))+(n?" · "+n+(n===1?" nome":" nomes"):"");
     sel.append(o);
   });
   sel.value=atual;
@@ -459,7 +463,7 @@ function renderTreino(){
     const futuro = Date.now() < abertura(atual).getTime();
     $("past-note").textContent = futuro
       ? "🔒 A lista deste treino abre "+fmtQuando(abertura(atual))+"."
-      : "🔒 Lista fechada: as confirmações encerraram às "+HORA(parse(atual).getDay())+", no horário do treino."+(isAdmin?" Como organizador, você ainda pode corrigir e fazer a chamada: toque em \"Faltou\" em quem pôs o nome e não apareceu.":"");
+      : "🔒 Lista fechada: as confirmações encerraram às "+hm(fecha(atual))+(TOLERA[parse(atual).getDay()]?" ("+TOLERA[parse(atual).getDay()]+" minutos depois do início do treino).":", no horário do treino.")+(isAdmin?" Como organizador, você ainda pode corrigir e fazer a chamada: toque em \"Faltou\" em quem pôs o nome e não apareceu.":"");
   }
   $("box-confirm").hidden = !carregou || old || !!mine || !!jaPorNome;
   $("box-done").hidden = !(mine || jaPorNome) || old;
@@ -521,7 +525,7 @@ async function adicionar(nome, comoAdmin){
   }catch(e){
     console.error(e);
     // permissão negada: lista já fechou, ou alguém com o mesmo nome já está nela
-    const motivo = !aberto(atual) && !isAdmin ? "🔒 A lista deste treino já fechou (fecha no horário do treino)."
+    const motivo = !aberto(atual) && !isAdmin ? "🔒 A lista deste treino já fechou às "+hm(fecha(atual))+"."
       : lista(atual).some(p=>key(p.nome)===key(nome)) ? nome+" já está na lista. Se for outra pessoa, ponha o sobrenome."
       : "Não deu para salvar ("+(e && e.code || "erro")+"). Feche e abra o app e tente de novo.";
     toast(motivo);
