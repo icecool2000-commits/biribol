@@ -81,6 +81,16 @@ ol.list li.mine{background:color-mix(in srgb,var(--accent) 16%,transparent)}
 .nome{font-weight:500;overflow-wrap:anywhere}
 .sub{display:block;font-size:12px;color:var(--muted)}
 li button{padding:5px 10px;font-size:13px}
+ol.list li.furo .nome{text-decoration:line-through;text-decoration-thickness:2px;color:var(--muted)}
+.tag-furo{display:inline-block;margin-left:6px;font-size:12px;font-weight:600;color:var(--danger)}
+ol.list li .acoes{display:flex;gap:6px}
+ol.list li .acoes button{padding:6px 10px;font-size:13px}
+.mural{margin-top:22px;display:flex;flex-direction:column;gap:2px}
+.mural h2{margin:0;font-size:18px}
+.mural ol.list{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+.mural ol.list li:first-child{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+.mural.vazio ol.list{display:none}
+.mural .furos{color:var(--danger);font-size:18px}
 .empty{padding:22px 16px;color:var(--muted);text-align:center;display:block!important}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 .actions > *{flex:1 1 160px}
@@ -253,6 +263,16 @@ try{ BiribolAnim.abertura({ video:"anim/abertura.mp4?v=3", poster:"anim/abertura
       <button type="button" class="ghost" id="copy-rk">Copiar ranking</button>
       <a class="btn wa" id="wa-rk" href="#" target="_blank" rel="noopener">Mandar ranking no grupo</a>
     </div>
+    <div class="mural" id="mural">
+      <h2>🙈 Mural da Vergonha</h2>
+      <p class="cap">Quem pôs o nome na lista e não apareceu no treino. Furo não conta presença no ranking.</p>
+      <p class="cap" id="mural-cap"></p>
+      <ol class="list" id="mural-lista"></ol>
+      <div class="actions" id="mural-acoes" hidden>
+        <button type="button" class="ghost" id="copy-mural">Copiar mural</button>
+        <a class="btn wa" id="wa-mural" href="#" target="_blank" rel="noopener">Mandar mural no grupo</a>
+      </div>
+    </div>
   </section>
 
   <!-- MÉTRICAS -->
@@ -357,7 +377,7 @@ const key = n => n.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").
 const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
 
 let user = null, isAdmin = false, isGestor = false, isEditor = false, pararEditor = null, pararLista = null, torneio = null;
-let todas = [];           // {dia, id, nome, em(ms), uid}
+let todas = [];           // {dia, id, nome, em(ms), uid, faltou} (faltou = pôs o nome e não apareceu; o organizador marca)
 let treinosCfg = {};      // dia -> {local}
 let cfg = { local: "" };
 let atual = null, rkDia = "geral", rkPeriodo = "tudo", carregou = false;
@@ -412,7 +432,7 @@ function textoTreino(){
     "📅 "+DIAS[d.getDay()]+", "+br(atual),"⏰ Horário: "+HORA(d.getDay())];
   if (loc) L.push("📍 Local: "+loc);
   L.push("","✅ *Confirmados ("+rows.length+"):*");
-  rows.forEach((r,i)=>L.push((i+1)+". "+r.nome));
+  rows.forEach((r,i)=>L.push((i+1)+". "+r.nome+(r.faltou?" 🙈 (não apareceu)":"")));
   if (!rows.length) L.push("1. ");
   L.push("","👉 Confirme a sua presença: "+location.origin+location.pathname);
   return L.join("\n");
@@ -439,7 +459,7 @@ function renderTreino(){
     const futuro = Date.now() < abertura(atual).getTime();
     $("past-note").textContent = futuro
       ? "🔒 A lista deste treino abre "+fmtQuando(abertura(atual))+"."
-      : "🔒 Lista fechada: as confirmações encerraram às "+HORA(parse(atual).getDay())+", no horário do treino."+(isAdmin?" Como organizador, você ainda pode corrigir.":"");
+      : "🔒 Lista fechada: as confirmações encerraram às "+HORA(parse(atual).getDay())+", no horário do treino."+(isAdmin?" Como organizador, você ainda pode corrigir e fazer a chamada: toque em \"Faltou\" em quem pôs o nome e não apareceu.":"");
   }
   $("box-confirm").hidden = !carregou || old || !!mine || !!jaPorNome;
   $("box-done").hidden = !(mine || jaPorNome) || old;
@@ -468,11 +488,22 @@ function renderTreino(){
     const nm=document.createElement("span"); nm.className="nome"; nm.textContent=r.nome;
     const h=document.createElement("span"); h.className="sub";
     h.textContent = r.em ? new Date(r.em).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "enviando…";
-    dv.append(nm,h); li.append(n,dv);
+    if (r.faltou){ li.classList.add("furo"); const t=document.createElement("span"); t.className="tag-furo"; t.textContent="🙈 não apareceu"; dv.append(nm,t,h); }
+    else dv.append(nm,h);
+    li.append(n,dv);
+    const comecou = inicio(r.dia).getTime() <= Date.now();
     if (isAdmin){
+      const acoes=document.createElement("div"); acoes.className="acoes";
+      if (comecou){
+        // chamada: depois que o treino começa, o organizador marca quem pôs o nome e não veio
+        const f=document.createElement("button"); f.type="button"; f.className = r.faltou ? "ghost" : "danger";
+        f.textContent = r.faltou ? "Veio" : "Faltou";
+        f.setAttribute("aria-label", r.faltou ? "Marcar que "+r.nome+" veio" : "Marcar que "+r.nome+" não apareceu");
+        f.onclick=()=>marcarFalta(r, !r.faltou); acoes.append(f);
+      }
       const b=document.createElement("button"); b.className="danger"; b.type="button"; b.textContent="Tirar";
       b.setAttribute("aria-label","Tirar "+r.nome+" da lista");
-      b.onclick=()=>remover(r); li.append(b);
+      b.onclick=()=>remover(r); acoes.append(b); li.append(acoes);
     } else li.append(document.createElement("span"));
     ol.append(li);
   });
@@ -482,14 +513,18 @@ async function adicionar(nome, comoAdmin){
   nome = limpa(nome);
   if (nome.length < 2){ toast("Digite um nome."); return false; }
   const conhecido = nomesConhecidos().find(x=>key(x)===key(nome)); if (conhecido) nome = conhecido;
-  if (lista(atual).some(p=>key(p.nome)===key(nome))){ toast(nome+" já está na lista."); return false; }
+  if (lista(atual).some(p=>key(p.nome)===key(nome))){ toast(nome+" já está na lista. Se for outra pessoa com o mesmo nome, ponha o sobrenome."); return false; }
   if (!user){ toast("Conectando… tente de novo em instantes."); return false; }
   try{
     await setDoc(doc(db,"treinos",atual,"presencas",key(nome)), { nome, em: serverTimestamp(), uid: user.uid });
     return nome;
   }catch(e){
     console.error(e);
-    toast(e && e.code==="permission-denied" ? (nome+" já está na lista.") : "Não deu para salvar. Verifique a internet.");
+    // permissão negada: lista já fechou, ou alguém com o mesmo nome já está nela
+    const motivo = !aberto(atual) && !isAdmin ? "🔒 A lista deste treino já fechou (fecha no horário do treino)."
+      : lista(atual).some(p=>key(p.nome)===key(nome)) ? nome+" já está na lista. Se for outra pessoa, ponha o sobrenome."
+      : "Não deu para salvar ("+(e && e.code || "erro")+"). Feche e abra o app e tente de novo.";
+    toast(motivo);
     return false;
   }
 }
@@ -509,6 +544,10 @@ $("admin-add").addEventListener("submit", async e=>{
   if (ok){ $("admin-nome").value=""; $("admin-nome").focus(); toast(ok+" adicionado."); }
 });
 
+async function marcarFalta(p, faltou){
+  try{ await updateDoc(doc(db,"treinos",p.dia,"presencas",p.id), { faltou }); toast(faltou ? "🙈 "+p.nome+" foi para o Mural da Vergonha." : p.nome+" marcado como presente."); }
+  catch(e){ console.error(e); toast("Não deu para salvar a chamada."); }
+}
 async function remover(p){
   try{ await deleteDoc(doc(db,"treinos",p.dia,"presencas",p.id)); toast(p.nome+" saiu da lista."); }
   catch(e){ console.error(e); toast("Não deu para tirar o nome."); }
@@ -538,8 +577,9 @@ async function copiar(t){
 $("copy").onclick=()=>copiar(textoTreino());
 
 /* ---------- RANKING ---------- */
-function filtrados(){
+function filtrados(furos){
   return todas.filter(p=>{
+    if (!!p.faltou !== !!furos) return false;
     const d=parse(p.dia).getDay();
     if (rkDia!=="geral" && String(d)!==rkDia) return false;
     return rkPeriodo==="tudo" || p.dia.startsWith(rkPeriodo);
@@ -603,7 +643,42 @@ function renderRanking(){
     tbody.append(tr);
   });
   tb.append(tbody);
+  renderMural();
 }
+// Mural da Vergonha: quem pôs o nome na lista e não apareceu (mesmo filtro de dia e período do ranking)
+function calcMural(){
+  const furos=filtrados(true), conf={}, m={};
+  todas.filter(p=>{ const d=parse(p.dia).getDay(); return (rkDia==="geral" || String(d)===rkDia) && (rkPeriodo==="tudo" || p.dia.startsWith(rkPeriodo)); })
+    .forEach(p=>{ const k=key(p.nome); conf[k]=(conf[k]||0)+1; });
+  furos.forEach(p=>{ const k=key(p.nome), x=m[k]||(m[k]={nome:p.nome,n:0,ult:""}); x.n++; if (p.dia>x.ult) x.ult=p.dia; });
+  return Object.entries(m).map(([k,x])=>({...x, conf:conf[k]||x.n})).sort((a,b)=>b.n-a.n || b.n/b.conf-a.n/a.conf || b.ult.localeCompare(a.ult));
+}
+function renderMural(){
+  const box=$("mural"), arr=calcMural(), ol=$("mural-lista"); ol.textContent="";
+  $("mural-cap").textContent = arr.length ? arr.reduce((t,x)=>t+x.n,0)+" furos no período. O organizador marca na lista de cada treino, depois que ele começa." : "Ninguém furou neste período. 👏 O organizador marca quem faltou na lista de cada treino, depois que ele começa.";
+  $("mural-acoes").hidden = !arr.length;
+  $("wa-mural").href = wa(textoMural());
+  arr.forEach((x,i)=>{
+    const li=document.createElement("li");
+    const n=document.createElement("span"); n.className="n"; n.textContent= i===0 ? "🤡" : (i+1);
+    const dv=document.createElement("div");
+    const nm=document.createElement("span"); nm.className="nome"; nm.textContent=x.nome;
+    const s=document.createElement("span"); s.className="sub"; s.textContent="Furou "+x.n+" de "+x.conf+(x.conf===1?" confirmação":" confirmações")+" ("+Math.round(x.n/x.conf*100)+"%) · último: "+DIAS[parse(x.ult).getDay()].slice(0,3).toLowerCase()+" "+curto(x.ult);
+    dv.append(nm,s);
+    const b=document.createElement("b"); b.className="furos"; b.textContent=x.n+"×";
+    li.append(n,dv,b); ol.append(li);
+  });
+  box.classList.toggle("vazio", !arr.length);
+}
+function textoMural(){
+  const arr=calcMural(), per=$("sel-periodo").selectedOptions[0] ? $("sel-periodo").selectedOptions[0].textContent : "Todo o período";
+  const L=["🏐 *BIRIBOL OFICIAL MOCOCA* 🏐","🙈 *MURAL DA VERGONHA*","_Botou o nome na lista e não apareceu_","🗓️ "+per,""];
+  arr.forEach((x,i)=>L.push((i===0?"🤡":(i+1)+".")+" "+x.nome+" – furou "+x.n+(x.n===1?" vez":" vezes")));
+  if (!arr.length) L.push("Ninguém furou. Parabéns, time! 👏");
+  L.push("","👉 Confirmou? Apareça! "+location.origin+location.pathname);
+  return L.join("\n");
+}
+$("copy-mural").onclick=()=>copiar(textoMural());
 function textoRanking(){
   const {nT,arr}=calcRanking();
   const tit = rkDia==="geral" ? "GERAL" : DIAS[rkDia].toUpperCase();
@@ -686,7 +761,7 @@ function renderMetricas(){
   [["Treinos",nT,"com lista registrada"],["Presenças",tot,"somando todos os treinos"],["Média",media.toFixed(1).replace(".",","),"atletas por treino"],["Recorde",maxV, diaMax?DIAS[parse(diaMax).getDay()]+", "+curto(diaMax):"—"],["Atletas",atletas,"diferentes no período"],["Menor lista",minV, nT? DIAS[parse(dias.find(d=>porDia[d]===minV)).getDay()]+", "+curto(dias.find(d=>porDia[d]===minV)):"—"]]
     .forEach(([a,b,c])=>{ const d=document.createElement("div"); d.className="tile"; const s1=document.createElement("span"); s1.textContent=a; const s2=document.createElement("b"); s2.textContent=b; const s3=document.createElement("small"); s3.textContent=c; d.append(s1,s2,s3); tiles.append(d); });
   // top 5 atletas
-  const cont5={}; rows.forEach(p=>{ const k=key(p.nome); (cont5[k]||(cont5[k]={nome:p.nome,n:0})).n++; });
+  const cont5={}; rows.filter(p=>!p.faltou).forEach(p=>{ const k=key(p.nome); (cont5[k]||(cont5[k]={nome:p.nome,n:0})).n++; });
   const top=Object.values(cont5).sort((a,b)=>b.n-a.n || a.nome.localeCompare(b.nome,"pt-BR")).slice(0,5);
   const t5=$("ch-top5"); t5.textContent="";
   $("cap-top5").textContent = nT ? "Presenças em "+nT+(nT===1?" treino":" treinos")+" do período" : "";
@@ -867,7 +942,7 @@ onAuthStateChanged(auth, async u=>{
 const timer = setTimeout(()=>{ if(!carregou) toast("A lista está demorando. Verifique a internet."); },10000);
 onSnapshot(collectionGroup(db,"presencas"), snap=>{
   carregou = true; clearTimeout(timer);
-  todas = snap.docs.map(s=>{ const x=s.data(); const em = x.em instanceof Timestamp ? x.em.toMillis() : (x.em ? Number(x.em) : Date.now()); return {dia:s.ref.parent.parent.id, id:s.id, nome:x.nome, em, uid:x.uid}; }).filter(p=>p.nome);
+  todas = snap.docs.map(s=>{ const x=s.data(); const em = x.em instanceof Timestamp ? x.em.toMillis() : (x.em ? Number(x.em) : Date.now()); return {dia:s.ref.parent.parent.id, id:s.id, nome:x.nome, em, uid:x.uid, faltou: x.faltou===true}; }).filter(p=>p.nome);
   renderAll();
 }, e=>{ console.error(e); toast("Não foi possível carregar a lista."); });
 onSnapshot(collection(db,"treinos"), snap=>{ const m={}; snap.docs.forEach(s=>m[s.id]=s.data()); treinosCfg=m; renderTreino(); }, ()=>{});
